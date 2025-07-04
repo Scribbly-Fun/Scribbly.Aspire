@@ -23,8 +23,9 @@
     </PackageReference>
   </ItemGroup>
 
+
   <ItemGroup>
-    <ProjectReference Include="..\Scribbly.Aspire.AppHost\Scribbly.Aspire.AppHost.csproj" />
+    <ProjectReference Include="..\..\example\Scribbly.Aspire.AppHost\Scribbly.Aspire.AppHost.csproj" />
   </ItemGroup>
 
   <ItemGroup>

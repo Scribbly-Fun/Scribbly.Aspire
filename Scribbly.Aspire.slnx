@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/.setup/">
+    <File Path=".github/workflows/dotnet-beta.yml" />
+    <File Path=".github/workflows/dotnet-release.yml" />
+    <File Path=".github/workflows/dotnet-test.yml" />
+  </Folder>
+  <Folder Name="/app/">
+    <Project Path="example/Scribbly.Aspire.ApiService/Scribbly.Aspire.ApiService.csproj" />
+    <Project Path="example/Scribbly.Aspire.AppHost/Scribbly.Aspire.AppHost.csproj" />
+    <Project Path="example/Scribbly.Aspire.ServiceDefaults/Scribbly.Aspire.ServiceDefaults.csproj" />
+    <Project Path="example/Scribbly.Aspire.Web/Scribbly.Aspire.Web.csproj" />
+  </Folder>
+  <Folder Name="/lib/">
+    <Project Path="source/Scribbly.Aspire.Extensions/Scribbly.Aspire.Extensions.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Scribbly.Aspire.Tests/Scribbly.Aspire.Tests.csproj" />
+  </Folder>
+</Solution>
