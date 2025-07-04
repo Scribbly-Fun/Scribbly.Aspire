@@ -1,0 +1,30 @@
+<Project>
+   <PropertyGroup>
+     <RootNamespace>Scribbly.Aspire</RootNamespace>
+     <IsPackable>false</IsPackable>
+     <TargetFramework>net9.0</TargetFramework>
+     <LangVersion>latestmajor</LangVersion>
+     <ImplicitUsings>enable</ImplicitUsings>
+     <Nullable>enable</Nullable>
+     <GenerateDocumentationFile>False</GenerateDocumentationFile>
+     <Company>Scribble LLC</Company>
+     <WarningsAsErrors>True</WarningsAsErrors>
+     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+   </PropertyGroup>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <None Include="..\..\docs\scribbly_logo.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+  
+</Project>
