@@ -3,8 +3,11 @@
     <File Path=".github/workflows/dotnet-beta.yml" />
     <File Path=".github/workflows/dotnet-release.yml" />
     <File Path=".github/workflows/dotnet-test.yml" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
   </Folder>
   <Folder Name="/app/">
+    <File Path="example/Directory.Build.props" />
     <Project Path="example/Scribbly.Aspire.ApiService/Scribbly.Aspire.ApiService.csproj" />
     <Project Path="example/Scribbly.Aspire.AppHost/Scribbly.Aspire.AppHost.csproj" />
     <Project Path="example/Scribbly.Aspire.ServiceDefaults/Scribbly.Aspire.ServiceDefaults.csproj" />
@@ -14,6 +17,7 @@
     <Project Path="source/Scribbly.Aspire.Extensions/Scribbly.Aspire.Extensions.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <File Path="tests/Directory.Build.props" />
     <Project Path="tests/Scribbly.Aspire.Tests/Scribbly.Aspire.Tests.csproj" />
   </Folder>
 </Solution>
