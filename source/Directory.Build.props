@@ -13,13 +13,23 @@
      <PackageReadmeFile>README.md</PackageReadmeFile>
      <PackageTags>Dotnet;Aspire;</PackageTags>
      <Company>Scribble LLC</Company>
-     <WarningsAsErrors>True</WarningsAsErrors>
-     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+
+     <DocsPath>README.md</DocsPath>
    </PropertyGroup>
 
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+
+    <PackageReference Include="Microsoft.DotNet.GenAPI.Task" PrivateAssets="All" />
+  </ItemGroup>
   
   <ItemGroup>
     <None Include="..\..\docs\scribbly_logo.png">
@@ -31,5 +41,10 @@
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
+
+  <PropertyGroup>
+    <DefaultWarningsAsErrors>$(WarningsAsErrors);CS1591;CS1573;CS1712</DefaultWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
   
 </Project>

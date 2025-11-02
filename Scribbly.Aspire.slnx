@@ -3,21 +3,26 @@
     <File Path=".github/workflows/dotnet-beta.yml" />
     <File Path=".github/workflows/dotnet-release.yml" />
     <File Path=".github/workflows/dotnet-test.yml" />
-    <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
+    <File Path="nuget.config" />
+    <File Path="Directory.Build.targets" />
   </Folder>
   <Folder Name="/app/">
-    <File Path="example/Directory.Build.props" />
     <Project Path="example/Scribbly.Aspire.ApiService/Scribbly.Aspire.ApiService.csproj" />
     <Project Path="example/Scribbly.Aspire.AppHost/Scribbly.Aspire.AppHost.csproj" />
     <Project Path="example/Scribbly.Aspire.ServiceDefaults/Scribbly.Aspire.ServiceDefaults.csproj" />
     <Project Path="example/Scribbly.Aspire.Web/Scribbly.Aspire.Web.csproj" />
+    <File Path="example/Directory.Build.props" />
   </Folder>
-  <Folder Name="/lib/">
+  <Folder Name="/source/">
     <Project Path="source/Scribbly.Aspire.Extensions/Scribbly.Aspire.Extensions.csproj" />
+    <Project Path="source\Scribbly.Aspire.Hosting.AspireBot\Scribbly.Aspire.Hosting.AspireBot.csproj" Type="Classic C#" />
+    <Project Path="source\Scribbly.Aspire.Hosting.K6\Scribbly.Aspire.Hosting.K6.csproj" Type="Classic C#" />
+    <File Path="source\Directory.Build.targets" />
+    <File Path="source\Directory.Build.props" />
   </Folder>
   <Folder Name="/tests/">
-    <File Path="tests/Directory.Build.props" />
     <Project Path="tests/Scribbly.Aspire.Tests/Scribbly.Aspire.Tests.csproj" />
+    <File Path="tests/Directory.Build.props" />
   </Folder>
 </Solution>

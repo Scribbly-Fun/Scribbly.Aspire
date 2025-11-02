@@ -1,5 +1,6 @@
 
 using Scribbly.Aspire.Extensions;
+using Scribbly.Aspire;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -8,7 +9,11 @@ var apiService = builder.AddProject<Projects.Scribbly_Aspire_ApiService>("apiser
 builder.AddProject<Projects.Scribbly_Aspire_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     .WithReference(apiService)
-    .WithEnvironmentVar("hi", "James")
     .WaitFor(apiService);
+
+if (!builder.ExecutionContext.IsPublishMode)
+{
+    builder.AddLoadTesting("k6server", "./scripts");
+}
 
 builder.Build().Run();

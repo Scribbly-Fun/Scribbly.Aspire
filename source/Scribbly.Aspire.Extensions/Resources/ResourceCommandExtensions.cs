@@ -1,8 +1,7 @@
 ﻿using Aspire.Hosting.ApplicationModel;
-using k8s.KubeConfigModels;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Scribbly.Aspire.Extensions;
+namespace Scribbly.Aspire;
 
 /// <summary>
 /// 
@@ -43,7 +42,7 @@ public static class ResourceCommandExtensions
         {
             ServiceProvider = provider,
             ResourceName = resourceName,
-            CancellationToken = CancellationToken.None
+            CancellationToken = CancellationToken.None,
         });
 
         return result;

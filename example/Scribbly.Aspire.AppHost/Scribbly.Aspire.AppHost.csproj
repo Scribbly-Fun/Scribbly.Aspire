@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <Sdk Name="Aspire.AppHost.Sdk" Version="9.0.0" />
+  <Sdk Name="Aspire.AppHost.Sdk" Version="9.5.1" />
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -12,12 +12,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\source\Scribbly.Aspire.Extensions\Scribbly.Aspire.Extensions.csproj" IsAspireProjectResource="false"/>
+    <ProjectReference Include="..\..\source\Scribbly.Aspire.Hosting.K6\Scribbly.Aspire.Hosting.K6.csproj"  IsAspireProjectResource="false"/>
     <ProjectReference Include="..\Scribbly.Aspire.ApiService\Scribbly.Aspire.ApiService.csproj" />
     <ProjectReference Include="..\Scribbly.Aspire.Web\Scribbly.Aspire.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.MySql" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,45 @@
+<Project>
+    <Import Project="..\Directory.Build.targets" />
+
+    <PropertyGroup>
+        <Authors>Scribbly,Eric Williams</Authors>
+        <Company>Scribbly</Company>
+        <Copyright>(c) Scribbly.fun</Copyright>
+        <NeutralLanguage>en</NeutralLanguage>
+        <Product>Scribbly.Aspire</Product>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/Scribbly-Fun/Scribbly.Aspire</PackageProjectUrl>
+        <PackageIcon>scribbly_logo.png</PackageIcon>
+        <RepositoryUrl>https://github.com/Scribbly-Fun/Scribbly.Aspire</RepositoryUrl>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+
+        <PackageReadmeFile>$(DocsPath)</PackageReadmeFile>
+        <PackageTags>aspire integration $(AdditionalPackageTags)</PackageTags>
+
+        <GenAPITargetPath Condition="'$(IsPackable)' == 'true'">$(MSBuildProjectDirectory)/api/$(AssemblyName).cs</GenAPITargetPath>
+
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Remove="$(GenAPITargetPath)" />
+    </ItemGroup>
+
+    <Target Name="CreateGenAPITargetPathFolder" BeforeTargets="GenAPIGenerateReferenceAssemblySource">
+        <MakeDir Directories="$(MSBuildProjectDirectory)/api" Condition="!Exists('$(MSBuildProjectDirectory)/api')" />
+    </Target>
+
+    <!--
+      Create local branding
+    -->
+    <PropertyGroup Condition=" '$(ContinuousIntegrationBuild)' == 'false' AND  '$(VersionSuffix)' == ''  ">
+        <_VersionSuffix>$([System.DateTime]::Now.ToString(yyMMdd-HHmm))</_VersionSuffix>
+        <VersionSuffix>dev.$(_VersionSuffix)</VersionSuffix>
+        <PackageVersion>$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <WarningsAsErrors>$(DefaultWarningsAsErrors);$(WarningsAsErrors)</WarningsAsErrors>
+    </PropertyGroup>
+</Project>

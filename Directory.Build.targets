@@ -1,0 +1,11 @@
+<Project>
+    <Target Name="EnsurePreviewVersionSet" BeforeTargets="GenerateNuspec" Condition=" '$(IsPreview)' == 'true' ">
+        <!--
+          Preview package suffixes
+        -->
+        <PropertyGroup>
+            <_VersionSuffix>$([System.DateTime]::Now.ToString(yyMMdd-HHmm))</_VersionSuffix>
+            <PackageVersion>$(PackageVersion)-$(_VersionSuffix)</PackageVersion>
+        </PropertyGroup>
+    </Target>
+</Project>

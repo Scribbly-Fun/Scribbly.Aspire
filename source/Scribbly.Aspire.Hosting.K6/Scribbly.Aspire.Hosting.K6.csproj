@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <NoWarn>CS1591</NoWarn>
+        <PackageTags>aspire integration hosting grafana k6</PackageTags>
+        <Description>Grafana/K6® support for .NET Aspire.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+
+        <PackageReference Include="Aspire.Hosting"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="grafana-datasource.yaml">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
+      <None Remove="k6-load-testing-results.json" />
+      <Content Include="grafana-dashboard.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Scribbly.Aspire.Extensions\Scribbly.Aspire.Extensions.csproj" />
+    </ItemGroup>
+
+</Project>
