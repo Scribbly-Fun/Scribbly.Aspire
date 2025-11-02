@@ -13,7 +13,10 @@ builder.AddProject<Projects.Scribbly_Aspire_Web>("webfrontend")
 
 if (!builder.ExecutionContext.IsPublishMode)
 {
-    builder.AddLoadTesting("k6server", "./scripts");
+    builder
+        .AddLoadTesting("k6server", "./scripts")
+        .WithApiResourceForScript("weather-test", apiService)
+        .WithApiResourceForScript("loadtest", apiService);
 }
 
 builder.Build().Run();

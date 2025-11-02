@@ -8,6 +8,7 @@ public class K6ServerResource : ContainerResource, IResourceWithConnectionString
     internal const string DefaultScriptDirectory = "./k6_scripts";
     
     private readonly Dictionary<string, K6ScriptResource.Context> _scripts = new (StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, EndpointReference> _endpoints = new (StringComparer.OrdinalIgnoreCase);
     
     /// <inheritdoc />
     public K6ServerResource(string name, ParameterResource? scriptDirectory) : base(name)
@@ -44,7 +45,15 @@ public class K6ServerResource : ContainerResource, IResourceWithConnectionString
     {
         _scripts.TryAdd(script.Name, script);
     }
+    
+    internal void AddEndpoint(EndpointReference endpoint, string script)
+    {
+        _endpoints.TryAdd(script, endpoint);
+    }
 
     internal bool TryGetScript(string name, [NotNullWhen(true)] out K6ScriptResource.Context? script) =>
         _scripts.TryGetValue(name, out script!);
+    
+    internal bool TryGetEndpoint(string script, [NotNullWhen(true)] out EndpointReference? endpoint) =>
+        _endpoints.TryGetValue(script, out endpoint!);
 }

@@ -7,6 +7,6 @@ export let options = {
 };
 
 export default function () {
-  http.get('https://test.k6.io');
+  http.get('http://host.docker.internal:5343/weatherforecast');
   sleep(1);
 }

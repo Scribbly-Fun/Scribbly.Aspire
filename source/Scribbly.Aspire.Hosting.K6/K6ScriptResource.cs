@@ -18,7 +18,7 @@ public class K6ScriptResource : Resource
                 throw new InvalidOperationException($"The file {fileInfo} is not JS Script");
             }
             Name = fileInfo.Name.Replace(".js", "").Replace("_", "-").Replace(".", "-");
-            Path = directory + "/" + fileInfo.Name;
+            Path = fileInfo.Name;
         }
     }
     
