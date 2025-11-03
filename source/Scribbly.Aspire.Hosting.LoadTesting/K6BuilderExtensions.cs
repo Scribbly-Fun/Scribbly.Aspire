@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +20,6 @@ public sealed class K6ResourceOptions
 
 public static class K6BuilderExtensions
 {
-
     public static IResourceBuilder<K6ServerResource> AddLoadTesting(
         this IDistributedApplicationBuilder builder,
         [ResourceName] string name,
@@ -36,7 +36,7 @@ public static class K6BuilderExtensions
         
         var k6Server = new K6ServerResource(name, path);
 
-        builder.Eventing.Subscribe<InitializeResourceEvent>(k6Server, async (@event, ct) =>
+        builder.Eventing.Subscribe<InitializeResourceEvent>(k6Server, (@event, ct) =>
         {
             var serverResource = (K6ServerResource)@event.Resource;
             var directory = serverResource.ScriptDirectory;
@@ -44,19 +44,42 @@ public static class K6BuilderExtensions
             {
                 Directory.CreateDirectory(directory);
             }
-        });
-
-        builder.Eventing.Subscribe<ResourceReadyEvent>(k6Server, (@event, ct) =>
-        {
+            
             return Task.CompletedTask;
         });
 
+        builder.Eventing.Subscribe<BeforeResourceStartedEvent>(k6Server, async (@event, token) =>
+        {
+            if (@event.Resource is not K6ServerResource server)
+            {
+                return;
+            }
+            if (server is { SelectedScript: not null })
+            {
+                return;
+            }
+
+            if (server.Initialized == false)
+            {
+                server.Initialized = true;
+                return;
+            }
+#pragma warning disable ASPIREINTERACTION001
+            var interaction = @event.Services.GetRequiredService<IInteractionService>();
+            if (interaction.IsAvailable)
+            { 
+                await interaction.PromptNotificationAsync(
+                    "No Script Selected",
+                    "Please select a load test from the available script resources to execute",
+                    new NotificationInteractionOptions{ ShowDismiss = true, Intent = MessageIntent.Warning }
+                    , cancellationToken: token);
+            }
+#pragma warning restore ASPIREINTERACTION001
+        });
+        
         var healthCheckKey = $"{name}_check";
         
-        builder.Services.AddHealthChecks().AddCheck(healthCheckKey, token =>
-        {
-            return HealthCheckResult.Healthy();
-        });
+        builder.Services.AddHealthChecks().AddCheck(healthCheckKey, token => HealthCheckResult.Healthy());
         
         var resourceBuilder = builder
             .AddResource(k6Server)
@@ -73,6 +96,12 @@ public static class K6BuilderExtensions
                 
                 ct.Args.Add("run"); 
                 ct.Args.Add(server.SelectedScript.ScriptArg);
+                
+                ct.Args.Add("--vus"); 
+                ct.Args.Add(server.SelectedScript.VirtualUsers); 
+                
+                ct.Args.Add("--duration"); 
+                ct.Args.Add($"{server.SelectedScript.Duration}s"); 
             })
             .WithEnvironment(ct =>
             {
@@ -87,9 +116,10 @@ public static class K6BuilderExtensions
                 
                 if (annotation is null)
                 {
-                    throw new InvalidOperationException("Unable to find script context");
+                    // When there is no annotation we assume you want to use the value from the script
+                    return;
                 }
-
+                
                 var url = $"{annotation.Endpoint.Scheme}://host.docker.internal:{annotation.Endpoint.Port}";
                 
                 ct.EnvironmentVariables.Add("ASPIRE_RESOURCE", url);
@@ -107,26 +137,6 @@ public static class K6BuilderExtensions
             k6Server.AddScript(scriptContext);
             
             resourceBuilder.WithScriptResource(scriptContext, options);
-            
-            // resourceBuilder.WithCommand(scriptContext.Name, $"Execute {scriptContext.Name}", async context =>
-            // {
-            //     var applicationModel = context.ServiceProvider.GetRequiredService<DistributedApplicationModel>();
-            //     
-            //     var serverResource = applicationModel.Resources.FirstOrDefault(r =>
-            //         context.ResourceName.StartsWith(r.Name, StringComparison.OrdinalIgnoreCase));
-            //     
-            //     if (serverResource is not K6ServerResource server)
-            //     {
-            //         return new ExecuteCommandResult { Success = false, ErrorMessage = $"No K6 Resource Found to Execute the Script {K6ResourceOptions.ScriptToRun}" };
-            //     }
-            //
-            //     if (server.SelectedScript is null)
-            //     {
-            //         throw new DistributedApplicationException("No script has been selected, please start the resource from a child script");
-            //     }
-            //     
-            //     return await context.ServiceProvider.StartResource(server.Name);
-            // });
         }
         
         if (options.UseGrafanaDashboard)
@@ -171,20 +181,58 @@ public static class K6BuilderExtensions
         
         builder.Resource.AddScript(scriptResource);
 
-        var scriptResourceBuilder = builder.ApplicationBuilder.AddResource(scriptResource);
+        var scriptResourceBuilder = builder.ApplicationBuilder
+            .AddResource(scriptResource)
+            // .WithArgs(Path.Combine(Directory.GetCurrentDirectory(), builder.Resource.ScriptDirectory))
+            ;
 
-        scriptResourceBuilder.WithCommand(context.Name, "Execute Test", async cmdContext =>
+        scriptResourceBuilder.WithCommand(
+            context.Name, 
+            "Options", 
+            commandOptions: new CommandOptions{ IconName = "TopSpeed"}, 
+            executeCommand: async cmdContext =>
         {
+#pragma warning disable ASPIREINTERACTION001
             var applicationModel = cmdContext.ServiceProvider.GetRequiredService<DistributedApplicationModel>();
+            var interaction = cmdContext.ServiceProvider.GetRequiredService<IInteractionService>();
             var script = applicationModel.Resources.FirstOrDefault(r =>
-                r.Name.StartsWith(cmdContext.ResourceName, StringComparison.OrdinalIgnoreCase));
+                cmdContext.ResourceName.StartsWith(r.Name, StringComparison.OrdinalIgnoreCase));
 
             if (script is not K6ScriptResource resource)
             {
                 return new ExecuteCommandResult { Success = false, ErrorMessage = "Unknown Script" };
             }
             
-            return await cmdContext.ServiceProvider.StartResource(resource.Parent.Name);
+            var results = await interaction.PromptInputsAsync(
+                "Select a Load Test",
+                "Please select a load test from the available script resources to execute",
+                [
+                    new InteractionInput
+                    {
+                        Name = "Virtual Users",
+                        Placeholder = "10",
+                        Value = "10",
+                        InputType = InputType.Number,
+                    },
+                    new InteractionInput
+                    {
+                        Name = "Duration",
+                        Placeholder = "30 Seconds",
+                        Value = "30",
+                        InputType = InputType.Number,
+                    },
+                ], cancellationToken: cmdContext.CancellationToken);
+                
+            if (results.Canceled || results.Data.Count != 2)
+            {
+                return new ExecuteCommandResult { Success = true };
+            }
+            
+            resource.VirtualUsers = int.Parse(results.Data[0].Value!);
+            resource.Duration = int.Parse(results.Data[1].Value!);
+            
+            return new ExecuteCommandResult { Success = true };
+#pragma warning restore ASPIREINTERACTION001
         });
 
         scriptResourceBuilder.WithExplicitStart();
@@ -199,10 +247,11 @@ public static class K6BuilderExtensions
             if (script.Initialized)
             {
                 script.Parent.SelectScript(script.Name);
-
-                var explicitStartupAnnotation = script.Parent.Annotations.OfType<ExplicitStartupAnnotation>().First();
                 
-                var result = await @event.Services.StartResource(script.Parent.Name);
+                var commandService = @event.Services.GetRequiredService<ResourceCommandService>();
+
+                await commandService.ExecuteCommandAsync(script.Parent.Name, "resource-start", ct);
+                
                 return;
             }
 

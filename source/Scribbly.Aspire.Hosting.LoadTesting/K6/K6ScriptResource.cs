@@ -36,10 +36,13 @@ public class K6ScriptResource : ExecutableResource, IResourceWithParent<K6Server
     
     public string ScriptArg { get; }
     public string ScriptName => _context.Name;
+
+    public int VirtualUsers { get; set; } = 10;
+    public int Duration { get; set; } = 30;
     
     /// <inheritdoc />
     public K6ScriptResource(Context context, K6ServerResource parent, ParameterResource scriptFileName) 
-        : base(context.Name, "aspire", parent.ScriptDirectory)
+        : base(context.Name, "dir", Directory.GetCurrentDirectory())
     {
         _context = context;
         Parent = parent;

@@ -15,6 +15,8 @@ public class K6ServerResource : ContainerResource
     internal IReadOnlyList<K6ScriptResource> ScriptResources => _scriptResources;
 
     public string ScriptDirectory { get; set; }
+
+    public bool Initialized { get; set; }
     
     /// <inheritdoc />
     public K6ServerResource(string name, string scriptDirectory) : base(name)
