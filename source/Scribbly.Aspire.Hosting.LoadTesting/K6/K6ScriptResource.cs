@@ -1,9 +1,12 @@
+using System.Text;
 using Aspire.Hosting.ApplicationModel;
 
 namespace Scribbly.Aspire.K6;
 
-public class K6ScriptResource : Resource, IResourceWithParent<K6ServerResource>
+public class K6ScriptResource : ExecutableResource, IResourceWithParent<K6ServerResource>
 {
+    private readonly Context _context;
+
     public class Context
     {
         public string Name { get; }
@@ -21,6 +24,8 @@ public class K6ScriptResource : Resource, IResourceWithParent<K6ServerResource>
             Path = fileInfo.Name;
         }
     }
+
+    public bool Initialized { get; set; }
     
     public ReferenceExpression ScriptFileReference => ReferenceExpression.Create($"{ScriptFileParameter}");
     
@@ -29,10 +34,22 @@ public class K6ScriptResource : Resource, IResourceWithParent<K6ServerResource>
     /// <inheritdoc />
     public K6ServerResource Parent { get; }
     
+    public string ScriptArg { get; }
+    public string ScriptName => _context.Name;
+    
     /// <inheritdoc />
-    public K6ScriptResource(Context context, K6ServerResource parent, ParameterResource scriptFileName) : base(context.Name)
+    public K6ScriptResource(Context context, K6ServerResource parent, ParameterResource scriptFileName) 
+        : base(context.Name, "aspire", parent.ScriptDirectory)
     {
+        _context = context;
         Parent = parent;
         ScriptFileParameter = scriptFileName;
+
+        ScriptArg = new StringBuilder(parent.ScriptDirectory.StartsWith('.')
+                ? parent.ScriptDirectory.Remove(0, 1)
+                : parent.ScriptDirectory)
+            .Append('/')
+            .Append(context.Path)
+            .ToString();
     }
 }

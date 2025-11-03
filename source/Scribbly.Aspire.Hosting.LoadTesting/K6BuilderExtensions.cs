@@ -1,15 +1,7 @@
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-
-using System.Text;
-using System.Text.Json;
-using Aspire;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
 using Scribbly.Aspire.Grafana;
 using Scribbly.Aspire.K6;
 
@@ -42,8 +34,6 @@ public static class K6BuilderExtensions
         
         var path = scriptDirectory ?? K6ServerResource.DefaultScriptDirectory;
         
-        builder.Services.AddSingleton(new ScriptExecutionContext(path));
-        
         var k6Server = new K6ServerResource(name, path);
 
         builder.Eventing.Subscribe<InitializeResourceEvent>(k6Server, async (@event, ct) =>
@@ -68,7 +58,6 @@ public static class K6BuilderExtensions
             return HealthCheckResult.Healthy();
         });
         
-        
         var resourceBuilder = builder
             .AddResource(k6Server)
             .WithIconName("TopSpeed")
@@ -77,36 +66,24 @@ public static class K6BuilderExtensions
             .WithDataBindMount(path)
             .WithArgs(ct =>
             {
-                var executionContext = ct.ExecutionContext.ServiceProvider.GetRequiredService<ScriptExecutionContext>();
-                
-                if (executionContext.ScriptPath is null)
+                if (ct.Resource is not K6ServerResource server || server.SelectedScript is null)
                 {
                     return;
                 }
-
+                
                 ct.Args.Add("run"); 
-                ct.Args.Add(executionContext.ScriptPath);
+                ct.Args.Add(server.SelectedScript.ScriptArg);
             })
             .WithEnvironment(ct =>
             {
-                var executionContext = ct.ExecutionContext.ServiceProvider.GetRequiredService<ScriptExecutionContext>();
-                
-                if (executionContext.ScriptName is null)
+                if (ct.Resource is not K6ServerResource server || server.SelectedScript is null)
                 {
                     return;
                 }
                 
-                var applicationModel = ct.ExecutionContext.ServiceProvider.GetRequiredService<DistributedApplicationModel>();
-                
-                var serverResource = applicationModel.Resources.FirstOrDefault(r =>
-                    ct.Resource.Name.StartsWith(r.Name, StringComparison.OrdinalIgnoreCase));
-                
-                if (serverResource is not K6ServerResource server)
-                {
-                    throw new InvalidOperationException("Failed to find K6 Resource");
-                }
-                
-                var annotation = server.Annotations.OfType<K6LoadTestScriptAnnotation>().FirstOrDefault(a => a.Script == executionContext.ScriptName);
+                var annotation = server.Annotations
+                    .OfType<K6LoadTestScriptAnnotation>()
+                    .FirstOrDefault(a => a.Script == server.SelectedScript.ScriptName);
                 
                 if (annotation is null)
                 {
@@ -131,28 +108,25 @@ public static class K6BuilderExtensions
             
             resourceBuilder.WithScriptResource(scriptContext, options);
             
-            resourceBuilder.WithCommand(scriptContext.Name, $"Execute {scriptContext.Name}", async context =>
-            {
-                var applicationModel = context.ServiceProvider.GetRequiredService<DistributedApplicationModel>();
-                var executionContext = context.ServiceProvider.GetRequiredService<ScriptExecutionContext>();
-                
-                var serverResource = applicationModel.Resources.FirstOrDefault(r =>
-                    context.ResourceName.StartsWith(r.Name, StringComparison.OrdinalIgnoreCase));
-                
-                if (serverResource is not K6ServerResource server)
-                {
-                    return new ExecuteCommandResult { Success = false, ErrorMessage = $"No K6 Resource Found to Execute the Script {K6ResourceOptions.ScriptToRun}" };
-                }
-
-                if (!server.TryGetScript(scriptContext.Name, out var executionCtx))
-                {
-                    return new ExecuteCommandResult { Success = false, ErrorMessage = $"Failed to Find Script to Run {scriptContext.Name}" };
-                }
-
-                executionContext.ScriptPath = executionCtx.Path;
-                
-                return await context.ServiceProvider.StartResource(server.Name);
-            });
+            // resourceBuilder.WithCommand(scriptContext.Name, $"Execute {scriptContext.Name}", async context =>
+            // {
+            //     var applicationModel = context.ServiceProvider.GetRequiredService<DistributedApplicationModel>();
+            //     
+            //     var serverResource = applicationModel.Resources.FirstOrDefault(r =>
+            //         context.ResourceName.StartsWith(r.Name, StringComparison.OrdinalIgnoreCase));
+            //     
+            //     if (serverResource is not K6ServerResource server)
+            //     {
+            //         return new ExecuteCommandResult { Success = false, ErrorMessage = $"No K6 Resource Found to Execute the Script {K6ResourceOptions.ScriptToRun}" };
+            //     }
+            //
+            //     if (server.SelectedScript is null)
+            //     {
+            //         throw new DistributedApplicationException("No script has been selected, please start the resource from a child script");
+            //     }
+            //     
+            //     return await context.ServiceProvider.StartResource(server.Name);
+            // });
         }
         
         if (options.UseGrafanaDashboard)
@@ -199,21 +173,42 @@ public static class K6BuilderExtensions
 
         var scriptResourceBuilder = builder.ApplicationBuilder.AddResource(scriptResource);
 
-        scriptResourceBuilder.WithCommand(context.Name, "Execute Test", async context =>
+        scriptResourceBuilder.WithCommand(context.Name, "Execute Test", async cmdContext =>
         {
-            var applicationModel = context.ServiceProvider.GetRequiredService<DistributedApplicationModel>();
+            var applicationModel = cmdContext.ServiceProvider.GetRequiredService<DistributedApplicationModel>();
             var script = applicationModel.Resources.FirstOrDefault(r =>
-                r.Name.Contains(context.ResourceName, StringComparison.OrdinalIgnoreCase));
+                r.Name.StartsWith(cmdContext.ResourceName, StringComparison.OrdinalIgnoreCase));
 
             if (script is not K6ScriptResource resource)
             {
                 return new ExecuteCommandResult { Success = false, ErrorMessage = "Unknown Script" };
             }
             
-            return await context.ServiceProvider.StartResource(resource.Parent.Name);
+            return await cmdContext.ServiceProvider.StartResource(resource.Parent.Name);
         });
 
         scriptResourceBuilder.WithExplicitStart();
+        
+        builder.ApplicationBuilder.Eventing.Subscribe<BeforeResourceStartedEvent>(scriptResource, async (@event, ct) =>
+        {
+            if (@event.Resource is not K6ScriptResource script)
+            {
+                throw new DistributedApplicationException("Script resource started on non-script resource");
+            }
+
+            if (script.Initialized)
+            {
+                script.Parent.SelectScript(script.Name);
+
+                var explicitStartupAnnotation = script.Parent.Annotations.OfType<ExplicitStartupAnnotation>().First();
+                
+                var result = await @event.Services.StartResource(script.Parent.Name);
+                return;
+            }
+
+            script.Initialized = true;
+        });
+        
         return scriptResourceBuilder;
     }
     
