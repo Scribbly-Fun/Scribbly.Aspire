@@ -13,15 +13,17 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Content Include="grafana-datasource.yaml">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </Content>
       <None Remove="k6-load-testing-results.json" />
-      <Content Include="grafana-dashboard.json" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Scribbly.Aspire.Extensions\Scribbly.Aspire.Extensions.csproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <EmbeddedResource Include="cfg\grafana-dashboard.json" />
+      <EmbeddedResource Include="cfg\grafana-dashboard.yaml" />
+      <EmbeddedResource Include="cfg\grafana-datasource.yaml" />
     </ItemGroup>
 
 </Project>

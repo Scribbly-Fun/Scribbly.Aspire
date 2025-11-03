@@ -17,7 +17,7 @@
   <Folder Name="/source/">
     <Project Path="source/Scribbly.Aspire.Extensions/Scribbly.Aspire.Extensions.csproj" />
     <Project Path="source\Scribbly.Aspire.Hosting.AspireBot\Scribbly.Aspire.Hosting.AspireBot.csproj" Type="Classic C#" />
-    <Project Path="source\Scribbly.Aspire.Hosting.K6\Scribbly.Aspire.Hosting.K6.csproj" Type="Classic C#" />
+    <Project Path="source\Scribbly.Aspire.Hosting.LoadTesting\Scribbly.Aspire.Hosting.LoadTesting.csproj" Type="Classic C#" />
     <File Path="source\Directory.Build.targets" />
     <File Path="source\Directory.Build.props" />
   </Folder>

@@ -1,8 +1,8 @@
 using Aspire.Hosting.ApplicationModel;
 
-namespace Scribbly.Aspire;
+namespace Scribbly.Aspire.K6;
 
-public class K6ScriptResource : Resource
+public class K6ScriptResource : Resource, IResourceWithParent<K6ServerResource>
 {
     public class Context
     {
@@ -22,16 +22,17 @@ public class K6ScriptResource : Resource
         }
     }
     
-    public string ContainerName { get; set; }
-    
-    /// <inheritdoc />
-    public K6ScriptResource(Context context, string containerName, ParameterResource scriptFileName) : base(context.Name)
-    {
-        ScriptFileParameter = scriptFileName;
-        ContainerName = containerName;
-    }
-    
     public ReferenceExpression ScriptFileReference => ReferenceExpression.Create($"{ScriptFileParameter}");
     
     public ParameterResource ScriptFileParameter { get; set; }
+
+    /// <inheritdoc />
+    public K6ServerResource Parent { get; }
+    
+    /// <inheritdoc />
+    public K6ScriptResource(Context context, K6ServerResource parent, ParameterResource scriptFileName) : base(context.Name)
+    {
+        Parent = parent;
+        ScriptFileParameter = scriptFileName;
+    }
 }

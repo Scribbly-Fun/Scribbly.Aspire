@@ -10,6 +10,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
+using Scribbly.Aspire.Grafana;
+using Scribbly.Aspire.K6;
 
 namespace Scribbly.Aspire;
 
@@ -26,7 +28,8 @@ public sealed class K6ResourceOptions
 public static class K6BuilderExtensions
 {
 
-    public static IResourceBuilder<K6ServerResource> AddLoadTesting(this IDistributedApplicationBuilder builder,
+    public static IResourceBuilder<K6ServerResource> AddLoadTesting(
+        this IDistributedApplicationBuilder builder,
         [ResourceName] string name,
         string? scriptDirectory = null,
         Action<K6ResourceOptions>? optionsCallback = null)
@@ -36,31 +39,20 @@ public static class K6BuilderExtensions
 
         var options = new K6ResourceOptions();
         optionsCallback?.Invoke(options);
-
         
         var path = scriptDirectory ?? K6ServerResource.DefaultScriptDirectory;
-        var scriptDirectoryParameter = builder.AddParameter("k6-scripts", path);
         
         builder.Services.AddSingleton(new ScriptExecutionContext(path));
         
-        var scriptParameterResource = scriptDirectoryParameter.Resource;
+        var k6Server = new K6ServerResource(name, path);
 
-        var k6Server = new K6ServerResource(name, scriptParameterResource);
-
-        string? connectionString = null;
-
-        builder.Eventing.Subscribe<ConnectionStringAvailableEvent>(k6Server, async (@event, ct) =>
+        builder.Eventing.Subscribe<InitializeResourceEvent>(k6Server, async (@event, ct) =>
         {
-            connectionString = await k6Server.ConnectionStringExpression.GetValueAsync(ct).ConfigureAwait(false);
-
-            if (connectionString == null)
+            var serverResource = (K6ServerResource)@event.Resource;
+            var directory = serverResource.ScriptDirectory;
+            if (!Directory.Exists(directory))
             {
-                throw new DistributedApplicationException($"ConnectionStringAvailableEvent was published for the '{k6Server.Name}' resource but the connection string was null.");
-            }
-
-            if (!Directory.Exists(connectionString))
-            {
-                Directory.CreateDirectory(connectionString);
+                Directory.CreateDirectory(directory);
             }
         });
 
@@ -201,7 +193,9 @@ public static class K6BuilderExtensions
         this IResourceBuilder<K6ServerResource> builder, K6ScriptResource.Context context, K6ResourceOptions options)
     {
         var scriptParameter = builder.ApplicationBuilder.AddParameter(context.ParameterName, context.Path);
-        var scriptResource = new K6ScriptResource(context, builder.Resource.Name, scriptParameter.Resource);
+        var scriptResource = new K6ScriptResource(context, builder.Resource, scriptParameter.Resource);
+        
+        builder.Resource.AddScript(scriptResource);
 
         var scriptResourceBuilder = builder.ApplicationBuilder.AddResource(scriptResource);
 
@@ -216,73 +210,11 @@ public static class K6BuilderExtensions
                 return new ExecuteCommandResult { Success = false, ErrorMessage = "Unknown Script" };
             }
             
-            var k6Resource = applicationModel.Resources.FirstOrDefault(r =>
-                r.Name.Contains(resource.ContainerName, StringComparison.OrdinalIgnoreCase));
-
-            if (k6Resource is not K6ServerResource server)
-            {
-                return new ExecuteCommandResult { Success = false, ErrorMessage = $"No K6 Resource Found to Execute the Script {resource.ScriptFileParameter}" };
-            }
-            
-            return await context.ServiceProvider.StartResource(server.Name);
+            return await context.ServiceProvider.StartResource(resource.Parent.Name);
         });
 
         scriptResourceBuilder.WithExplicitStart();
         return scriptResourceBuilder;
-    }
-    
-    private static IResourceBuilder<InfluxResource> WithInfluxDatabase(this IResourceBuilder<K6ServerResource> builder, K6ResourceOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        
-        var influx = new InfluxResource(options.DatabaseContainerName);
-        var influxContainerBuilder = builder.ApplicationBuilder
-            .AddResource(influx)
-            .WithIconName("Clock")
-            .WithImage(K6ContainerImageTags.InfluxImage, K6ContainerImageTags.InfluxTag)
-            .WithImageRegistry(K6ContainerImageTags.Registry)
-            .WithHttpEndpoint(targetPort: 8086, name: "http")
-            .WithEnvironment("INFLUXDB_DB", "k6")
-            .ExcludeFromManifest();
-        
-        influxContainerBuilder.WithRelationship(builder.Resource, "datastream");
-
-        // influxContainerBuilder.WithHttpHealthCheck();
-
-        return influxContainerBuilder;
-    }
-    
-    private static IResourceBuilder<GrafanaResource> WithGrafanaDashboard(this IResourceBuilder<K6ServerResource> builder, K6ResourceOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-
-        var influxBuilder = builder.WithInfluxDatabase(options);
-        
-        var grafana = new GrafanaResource(options.DashboardContainerName);
-        var grafanaContainerBuilder = builder.ApplicationBuilder
-            .AddResource(grafana)
-            .WithIconName("Dashboard")
-            .WithImage(K6ContainerImageTags.GrafanaImage, K6ContainerImageTags.Tag)
-            .WithImageRegistry(K6ContainerImageTags.Registry)
-            .WithHttpEndpoint(targetPort: 3000, name: "http")
-            .WithEnvironment("GF_AUTH_ANONYMOUS_ORG_ROLE", "Admin")
-            .WithEnvironment("GF_AUTH_ANONYMOUS_ENABLED", "true")
-            .WithEnvironment("GF_AUTH_BASIC_ENABLED", "false")
-            .WithEnvironment("GF_SERVER_SERVE_FROM_SUB_PATH", "true")
-            .WithBindMount("./scripts/grafana","/var/lib/grafana/dashboards")
-            // .WithBindMount("./scripts/grafana-dashboard.yaml","/etc/grafana/provisioning/dashboards/dashboard.yaml")
-            .WithBindMount("./scripts/grafana-datasource.yaml","/etc/grafana/provisioning/datasources/datasource.yaml")
-            .ExcludeFromManifest();
-        
-        grafanaContainerBuilder
-            .WithRelationship(builder.Resource, "dashboard")
-            .WithReferenceRelationship(influxBuilder);
-
-        grafanaContainerBuilder.WithHttpHealthCheck();
-
-        grafanaContainerBuilder.WaitFor(influxBuilder);
-        
-        return grafanaContainerBuilder;
     }
     
     
