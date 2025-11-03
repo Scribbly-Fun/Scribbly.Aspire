@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using Aspire.Hosting.ApplicationModel;
 using Scribbly.Aspire.Grafana;
 
@@ -8,7 +9,6 @@ public class K6ServerResource : ContainerResource
 {
     internal const string DefaultScriptDirectory = "./k6_scripts";
     
-    private readonly Dictionary<string, K6ScriptResource.Context> _scripts = new (StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, EndpointReference> _endpoints = new (StringComparer.OrdinalIgnoreCase);
     
     private readonly List<K6ScriptResource> _scriptResources = [];
@@ -31,11 +31,6 @@ public class K6ServerResource : ContainerResource
         SelectedScript = _scriptResources.FirstOrDefault(s => s.Name == name);
     } 
     
-    internal void AddScript(K6ScriptResource.Context script)
-    {
-        _scripts.TryAdd(script.Name, script);
-    }
-    
     internal void AddScript(K6ScriptResource resource)
     {
         _scriptResources.Add(resource);
@@ -45,9 +40,6 @@ public class K6ServerResource : ContainerResource
     {
         _endpoints.TryAdd(script, endpoint);
     }
-
-    internal bool TryGetScript(string name, [NotNullWhen(true)] out K6ScriptResource.Context? script) =>
-        _scripts.TryGetValue(name, out script!);
     
     internal bool TryGetEndpoint(string script, [NotNullWhen(true)] out EndpointReference? endpoint) =>
         _endpoints.TryGetValue(script, out endpoint!);

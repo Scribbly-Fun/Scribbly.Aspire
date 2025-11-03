@@ -112,7 +112,7 @@ public static class K6BuilderExtensions
                 
                 var annotation = server.Annotations
                     .OfType<K6LoadTestScriptAnnotation>()
-                    .FirstOrDefault(a => a.Script == server.SelectedScript.ScriptName);
+                    .FirstOrDefault(a => a.Script == server.SelectedScript.Name);
                 
                 if (annotation is null)
                 {
@@ -132,11 +132,7 @@ public static class K6BuilderExtensions
 
         foreach (var fileInfo in scripts)
         {
-            var scriptContext = new K6ScriptResource.Context(path, fileInfo);
-            
-            k6Server.AddScript(scriptContext);
-            
-            resourceBuilder.WithScriptResource(scriptContext, options);
+            resourceBuilder.WithScriptResource(fileInfo);
         }
         
         if (options.UseGrafanaDashboard)
@@ -174,20 +170,18 @@ public static class K6BuilderExtensions
     }
 
     private static IResourceBuilder<K6ScriptResource> WithScriptResource(
-        this IResourceBuilder<K6ServerResource> builder, K6ScriptResource.Context context, K6ResourceOptions options)
+        this IResourceBuilder<K6ServerResource> builder, FileInfo scriptFile)
     {
-        var scriptParameter = builder.ApplicationBuilder.AddParameter(context.ParameterName, context.Path);
-        var scriptResource = new K6ScriptResource(context, builder.Resource, scriptParameter.Resource);
+        var scriptResource = K6ScriptResource.CreateScriptResource(scriptFile, builder.Resource);
         
         builder.Resource.AddScript(scriptResource);
 
         var scriptResourceBuilder = builder.ApplicationBuilder
             .AddResource(scriptResource)
-            // .WithArgs(Path.Combine(Directory.GetCurrentDirectory(), builder.Resource.ScriptDirectory))
-            ;
+            .WithArgs(scriptResource.ScriptArg);
 
         scriptResourceBuilder.WithCommand(
-            context.Name, 
+            scriptResource.Name, 
             "Options", 
             commandOptions: new CommandOptions{ IconName = "TopSpeed"}, 
             executeCommand: async cmdContext =>
