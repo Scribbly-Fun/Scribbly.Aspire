@@ -21,7 +21,6 @@ internal static class DashboardBuilderExtensions
             .WithImageRegistry(K6ContainerImageTags.Registry)
             .WithHttpEndpoint(targetPort: 8086, name: "http")
             .WithEnvironment("INFLUXDB_DB", "k6")
-            // .WithParentRelationship(builder.Resource.Parent.Server!)
             .ExcludeFromManifest();
     }
     
@@ -46,15 +45,13 @@ internal static class DashboardBuilderExtensions
             .WithBindMount($"{builder.Resource.ScriptDirectory}/grafana","/var/lib/grafana/dashboards")
             .WithBindMount($"{builder.Resource.ScriptDirectory}/grafana/dashboard.yaml","/etc/grafana/provisioning/dashboards/dashboard.yaml")
             .WithBindMount($"{builder.Resource.ScriptDirectory}/grafana/datasource.yaml","/etc/grafana/provisioning/datasources/datasource.yaml")
-            // .WithParentRelationship(builder.Resource.Parent)
-            // .WaitFor(influxBuilder)
             .WithHttpHealthCheck()
             .ExcludeFromManifest();
         
         builder.ApplicationBuilder.Eventing.Subscribe<InitializeResourceEvent>(builder.Resource, async (@event, ct) =>
         {
             var manager = @event.Services.GetRequiredService<GrafanaConfigurationManager>();
-            await manager.CopyConfigurationFiles((context, data) =>
+            await manager.CopyGrafanaConfigurationFiles((context, data) =>
             {
                 if (!context.Resource.Contains("datasource", StringComparison.InvariantCultureIgnoreCase))
                 {

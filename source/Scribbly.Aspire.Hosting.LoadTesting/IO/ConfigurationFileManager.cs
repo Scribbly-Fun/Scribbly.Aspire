@@ -1,6 +1,6 @@
-using Aspire.Hosting.ApplicationModel;
+using Scribbly.Aspire.Grafana;
 
-namespace Scribbly.Aspire.Grafana;
+namespace Scribbly.Aspire;
 
 internal sealed class GrafanaConfigurationManager
 {
@@ -10,9 +10,9 @@ internal sealed class GrafanaConfigurationManager
     
     private readonly string _scriptsDirectory;
     
-    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1);
+    private readonly SemaphoreSlim _lock = new (1);
     
-    private readonly IReadOnlyCollection<ConfigContext> _files =
+    private readonly IReadOnlyCollection<ConfigContext> _grafanaConfigurationFiles =
     [
         new ("grafana-dashboard.json", "dashboard.json", "grafana"),
         new ("grafana-dashboard.yaml", "dashboard.yaml", "grafana"),
@@ -24,13 +24,13 @@ internal sealed class GrafanaConfigurationManager
         _scriptsDirectory = scriptsDirectory;
     }
 
-    internal async ValueTask CopyConfigurationFiles(Func<ConfigContext, string, string> mutation, CancellationToken cancellation)
+    internal async ValueTask CopyGrafanaConfigurationFiles(Func<ConfigContext, string, string> mutation, CancellationToken cancellation)
     {
         await _lock.WaitAsync(cancellation);
 
         try
         {
-            foreach (var file in _files)
+            foreach (var file in _grafanaConfigurationFiles)
             {
                 await CopyConfigurationFile(file, mutation, cancellation);
             }
