@@ -2,7 +2,7 @@ namespace Scribbly.Aspire.Tests;
 
 public class WebTests
 {
-    [Fact]
+    [Fact(Skip = "Need to work out Aspire Testing")]
     public async Task GetWebResourceRootReturnsOkStatusCode()
     {
         // Arrange

@@ -115,8 +115,16 @@ public static class K6BuilderExtensions
             .WithHealthCheck(healthCheckKey)
             .ExcludeFromManifest()
             .WithExplicitStart();
+
+        // TODO: Needs to be async in the callback so we can copy the default script.
+        var directoryInfo = new DirectoryInfo(path);
+
+        if (!directoryInfo.Exists)
+        {
+            Directory.CreateDirectory(directoryInfo.FullName);
+        }
         
-        var scripts = new DirectoryInfo(path).GetFiles("*.js");
+        var scripts = directoryInfo.GetFiles("*.js");
 
         foreach (var fileInfo in scripts)
         {
