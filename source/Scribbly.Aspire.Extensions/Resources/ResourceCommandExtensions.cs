@@ -1,8 +1,7 @@
 ﻿using Aspire.Hosting.ApplicationModel;
-using k8s.KubeConfigModels;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Scribbly.Aspire.Extensions;
+namespace Scribbly.Aspire;
 
 /// <summary>
 /// 
@@ -34,19 +33,24 @@ public static class ResourceCommandExtensions
         {
             throw new InvalidOperationException($"Cannot get {nameof(ResourceCommandAnnotation)}, use at least Aspire 9.1");
         }
-
-        // TODO: Determine if the resource is already started
-
+        
         var resourceCommandAnnotation = commands.First(a => a.Name == StartCommand);
 
-        var result = await resourceCommandAnnotation.ExecuteCommand(new ExecuteCommandContext
+        try
         {
-            ServiceProvider = provider,
-            ResourceName = resourceName,
-            CancellationToken = CancellationToken.None
-        });
-
-        return result;
+            var result = await resourceCommandAnnotation.ExecuteCommand(new ExecuteCommandContext
+            {
+                ServiceProvider = provider,
+                ResourceName = resource.Name,
+                CancellationToken = CancellationToken.None,
+            });
+            return result;
+        }
+        catch (InvalidOperationException e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
     }
 
     /// <summary>

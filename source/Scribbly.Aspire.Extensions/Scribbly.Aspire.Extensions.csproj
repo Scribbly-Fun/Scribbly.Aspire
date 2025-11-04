@@ -3,6 +3,8 @@
   <PropertyGroup>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <NoWarn>CS1591</NoWarn>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

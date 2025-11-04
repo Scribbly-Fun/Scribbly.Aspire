@@ -1,9 +1,8 @@
 ﻿using System.Diagnostics;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace Scribbly.Aspire.Extensions;
+namespace Scribbly.Aspire;
 
 public sealed class DotnetBuildOptions
 {

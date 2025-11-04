@@ -1,7 +1,19 @@
+using Microsoft.AspNetCore.RateLimiting;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("load-testing", opt =>
+    {
+        opt.Window = TimeSpan.FromSeconds(10);
+        opt.PermitLimit = 2;
+        opt.QueueLimit = 0;
+    });
+});
 
 // Add services to the container.
 builder.Services.AddProblemDetails();
@@ -19,8 +31,11 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
+app.UseRateLimiter();
 
+app.MapGet("/load-test", () => Results.Ok()).RequireRateLimiting("load-testing");
+
+string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
 app.MapGet("/weatherforecast", () =>
 {
     var forecast = Enumerable.Range(1, 5).Select(index =>
