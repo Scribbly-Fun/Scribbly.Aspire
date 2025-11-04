@@ -3,7 +3,7 @@ using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
 using Scribbly.Aspire.K6;
 
-namespace Scribbly.Aspire.Grafana;
+namespace Scribbly.Aspire.Dashboard;
 
 internal static class DashboardBuilderExtensions
 {
@@ -21,7 +21,6 @@ internal static class DashboardBuilderExtensions
             .WithImageRegistry(K6ContainerImageTags.Registry)
             .WithHttpEndpoint(targetPort: 8086, name: "http")
             .WithEnvironment("INFLUXDB_DB", "k6")
-            // .WithParentRelationship(builder.Resource.Parent.Server!)
             .ExcludeFromManifest();
     }
     
@@ -29,7 +28,7 @@ internal static class DashboardBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         
-        var influxBuilder = builder.WithInfluxDatabase(options);
+        builder.WithInfluxDatabase(options);
         
         var grafana = new GrafanaResource(options.DashboardContainerName, builder.Resource.Parent);
         
@@ -46,15 +45,14 @@ internal static class DashboardBuilderExtensions
             .WithBindMount($"{builder.Resource.ScriptDirectory}/grafana","/var/lib/grafana/dashboards")
             .WithBindMount($"{builder.Resource.ScriptDirectory}/grafana/dashboard.yaml","/etc/grafana/provisioning/dashboards/dashboard.yaml")
             .WithBindMount($"{builder.Resource.ScriptDirectory}/grafana/datasource.yaml","/etc/grafana/provisioning/datasources/datasource.yaml")
-            // .WithParentRelationship(builder.Resource.Parent)
-            // .WaitFor(influxBuilder)
+            .WithUrl("/d/k6/k6-load-testing-results", "🎯 Load Test Results")
             .WithHttpHealthCheck()
             .ExcludeFromManifest();
         
         builder.ApplicationBuilder.Eventing.Subscribe<InitializeResourceEvent>(builder.Resource, async (@event, ct) =>
         {
-            var manager = @event.Services.GetRequiredService<GrafanaConfigurationManager>();
-            await manager.CopyConfigurationFiles((context, data) =>
+            var manager = @event.Services.GetRequiredService<ConfigurationFileManager>();
+            await manager.CopyGrafanaConfigurationFiles((context, data) =>
             {
                 if (!context.Resource.Contains("datasource", StringComparison.InvariantCultureIgnoreCase))
                 {
@@ -62,7 +60,7 @@ internal static class DashboardBuilderExtensions
                 }
                 if (@event.Resource is K6ServerResource { OutputDatabase: not null } server)
                 {
-                    return GrafanaConfigurationManager.MutateDataSourceFile(data, server.OutputDatabase);
+                    return ConfigurationFileManager.MutateDataSourceFile(data, server.OutputDatabase);
                 }
                 return data;
             }, ct);

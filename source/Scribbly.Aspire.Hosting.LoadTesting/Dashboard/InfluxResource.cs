@@ -1,7 +1,7 @@
 using Aspire.Hosting.ApplicationModel;
 using Scribbly.Aspire.K6;
 
-namespace Scribbly.Aspire.Grafana;
+namespace Scribbly.Aspire.Dashboard;
 
 public sealed class InfluxResource(string name, K6ServerResource parent) : ContainerResource(name), IResourceWithParent<K6ServerResource>
 {

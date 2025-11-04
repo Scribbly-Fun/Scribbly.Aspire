@@ -1,36 +1,40 @@
-using Aspire.Hosting.ApplicationModel;
+using Scribbly.Aspire.Dashboard;
 
-namespace Scribbly.Aspire.Grafana;
+namespace Scribbly.Aspire;
 
-internal sealed class GrafanaConfigurationManager
+/// <summary>
+/// Ensure the configuration files required are created and stored in the correct locations.
+/// </summary>
+/// <remarks>All default files are stored in the manifest resource stream and mutated with Aspire data.</remarks>
+internal sealed class ConfigurationFileManager
 {
     internal record ConfigContext(string Resource, string TargetFile, string? TargetDirectory = null);
     
-    private const string Namespace = "Scribbly.Aspire.cfg";
+    internal const string Namespace = "Scribbly.Aspire.cfg";
     
     private readonly string _scriptsDirectory;
     
-    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1);
+    private readonly SemaphoreSlim _lock = new (1);
     
-    private readonly IReadOnlyCollection<ConfigContext> _files =
+    private readonly IReadOnlyCollection<ConfigContext> _grafanaConfigurationFiles =
     [
         new ("grafana-dashboard.json", "dashboard.json", "grafana"),
         new ("grafana-dashboard.yaml", "dashboard.yaml", "grafana"),
         new ("grafana-datasource.yaml", "datasource.yaml", "grafana"),
     ];
     
-    internal GrafanaConfigurationManager(string scriptsDirectory)
+    internal ConfigurationFileManager(string scriptsDirectory)
     {
         _scriptsDirectory = scriptsDirectory;
     }
 
-    internal async ValueTask CopyConfigurationFiles(Func<ConfigContext, string, string> mutation, CancellationToken cancellation)
+    internal async ValueTask CopyGrafanaConfigurationFiles(Func<ConfigContext, string, string> mutation, CancellationToken cancellation)
     {
         await _lock.WaitAsync(cancellation);
 
         try
         {
-            foreach (var file in _files)
+            foreach (var file in _grafanaConfigurationFiles)
             {
                 await CopyConfigurationFile(file, mutation, cancellation);
             }
@@ -61,7 +65,7 @@ internal sealed class GrafanaConfigurationManager
             return;
         }
     
-        var assembly = typeof(GrafanaResource).Assembly;
+        var assembly = typeof(LoadTesterResource).Assembly;
         await using var stream = assembly.GetManifestResourceStream($"{Namespace}.{resourceName}");
 
         if (stream is null)

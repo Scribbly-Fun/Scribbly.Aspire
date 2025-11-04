@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Aspire.Hosting.ApplicationModel;
-using Scribbly.Aspire.Grafana;
+using Scribbly.Aspire.Dashboard;
 
 namespace Scribbly.Aspire.K6;
 

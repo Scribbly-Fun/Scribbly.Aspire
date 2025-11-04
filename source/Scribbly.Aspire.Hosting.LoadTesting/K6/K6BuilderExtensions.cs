@@ -1,8 +1,9 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Eventing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Scribbly.Aspire.Grafana;
+using Scribbly.Aspire.Dashboard;
 
 namespace Scribbly.Aspire.K6;
 
@@ -17,7 +18,7 @@ public static class K6BuilderExtensions
         var k6Server = new K6ServerResource(name,path, builder.Resource);
         builder.Resource.AddK6Server(k6Server);
         
-        builder.ApplicationBuilder.Services.AddSingleton(new GrafanaConfigurationManager(path));
+        builder.ApplicationBuilder.Services.AddSingleton(new ConfigurationFileManager(path));
 
         builder.ApplicationBuilder.Eventing.Subscribe<InitializeResourceEvent>(k6Server, async (@event, ct) =>
         {
@@ -28,10 +29,11 @@ public static class K6BuilderExtensions
                 Directory.CreateDirectory(directory);
             }
 
-            var configManager = @event.Services.GetRequiredService<GrafanaConfigurationManager>();
+            var configManager = @event.Services.GetRequiredService<ConfigurationFileManager>();
             await configManager.CopyConfigurationFile(
-                new GrafanaConfigurationManager.ConfigContext("execute-script.ps1", "execute-script.ps1"), 
+                new ConfigurationFileManager.ConfigContext("execute-script.ps1", "execute-script.ps1"), 
                 cancellation: ct);
+            
         });
 
         builder.ApplicationBuilder.Eventing.Subscribe<BeforeResourceStartedEvent>(k6Server, async (@event, token) =>
@@ -49,6 +51,7 @@ public static class K6BuilderExtensions
             {
                 return;
             }
+            
 #pragma warning disable ASPIREINTERACTION001
             var interaction = @event.Services.GetRequiredService<IInteractionService>();
             if (interaction.IsAvailable)
@@ -112,9 +115,8 @@ public static class K6BuilderExtensions
             .WithHealthCheck(healthCheckKey)
             .ExcludeFromManifest()
             .WithExplicitStart();
-        
-        var scripts = new DirectoryInfo(path).GetFiles("*.js");
 
+        var scripts = new DirectoryInfo(path).InitializeScriptDirectory();
         foreach (var fileInfo in scripts)
         {
             resourceBuilder.WithScriptResource(fileInfo);
@@ -122,7 +124,7 @@ public static class K6BuilderExtensions
         
         if (options.UseGrafanaDashboard)
         {
-            var grafana = resourceBuilder.WithGrafanaDashboard(options);
+            resourceBuilder.WithGrafanaDashboard(options);
 
             resourceBuilder.WithEnvironment(context =>
             {
@@ -136,8 +138,6 @@ public static class K6BuilderExtensions
                     context.EnvironmentVariables.Add("K6_OUT", $"influxdb=http://{influxDbResource.Name}:{httpEndpoint.TargetPort}/k6");
                 }
             });
-
-            // resourceBuilder.WaitFor(grafana);
         }
 
         return resourceBuilder;
@@ -180,9 +180,7 @@ public static class K6BuilderExtensions
             commandOptions: new CommandOptions{ IconName = "TopSpeed"}, 
             executeCommand: async cmdContext =>
         {
-#pragma warning disable ASPIREINTERACTION001
             var applicationModel = cmdContext.ServiceProvider.GetRequiredService<DistributedApplicationModel>();
-            var interaction = cmdContext.ServiceProvider.GetRequiredService<IInteractionService>();
             var script = applicationModel.Resources.FirstOrDefault(r =>
                 cmdContext.ResourceName.StartsWith(r.Name, StringComparison.OrdinalIgnoreCase));
 
@@ -190,6 +188,10 @@ public static class K6BuilderExtensions
             {
                 return new ExecuteCommandResult { Success = false, ErrorMessage = "Unknown Script" };
             }
+            
+#pragma warning disable ASPIREINTERACTION001
+            var interaction = cmdContext.ServiceProvider.GetRequiredService<IInteractionService>();
+            var commandService = cmdContext.ServiceProvider.GetRequiredService<ResourceCommandService>();
             
             var results = await interaction.PromptInputsAsync(
                 "Select a Load Test",
@@ -218,8 +220,8 @@ public static class K6BuilderExtensions
             
             resource.VirtualUsers = int.Parse(results.Data[0].Value!);
             resource.Duration = int.Parse(results.Data[1].Value!);
-            
-            return new ExecuteCommandResult { Success = true };
+
+            return await commandService.ExecuteCommandAsync(script.Name, "resource-start");
 #pragma warning restore ASPIREINTERACTION001
         });
 
