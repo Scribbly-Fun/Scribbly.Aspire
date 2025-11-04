@@ -84,6 +84,7 @@ The script resources are your entry point for executing load tests.
 > [!Note]
 > This is a bit hacky right now, when these resources are stared a powershell script is executed just to create a dashboard visual effect that resource has started.
 > This script will simply echo the contents of the target script to the console.
+> While this process is NOT compatible with linux that will be resolved, the test will still run however the dashboard will display a failed state.
 > 
 > When you start the script resource the real magic is happening on the k6 container resource.
 
