@@ -1,5 +1,6 @@
 ﻿using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Eventing;
 using Scribbly.Aspire.K6;
 
 namespace Scribbly.Aspire;
@@ -22,7 +23,18 @@ public static class DistributedApplicationBuilderExtensions
         
         var resourceBuilder = builder
             .AddResource(resource)
-            .WithIconName("TopSpeed");
+            .WithIconName("TopSpeed")
+            .WithInitialState(new CustomResourceSnapshot 
+            {
+                ResourceType = "LoadTest", 
+                CreationTimeStamp = DateTime.UtcNow,
+                State = KnownResourceStates.Waiting, 
+                Properties =
+                [
+                    new ResourcePropertySnapshot(CustomResourceKnownProperties.Source, "Load Test"),
+                    new ResourcePropertySnapshot(CustomResourceKnownProperties.ConnectionString, scriptDirectory),
+                ]
+            });
         
         return resourceBuilder.AddK6ContainerResource($"{name}-k6", scriptDirectory, options);
     }

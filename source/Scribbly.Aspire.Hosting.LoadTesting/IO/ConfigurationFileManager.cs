@@ -1,4 +1,4 @@
-using Scribbly.Aspire.Grafana;
+using Scribbly.Aspire.Dashboard;
 
 namespace Scribbly.Aspire;
 

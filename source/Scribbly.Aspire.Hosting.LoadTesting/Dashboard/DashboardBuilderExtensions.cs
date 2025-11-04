@@ -3,7 +3,7 @@ using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
 using Scribbly.Aspire.K6;
 
-namespace Scribbly.Aspire.Grafana;
+namespace Scribbly.Aspire.Dashboard;
 
 internal static class DashboardBuilderExtensions
 {
@@ -28,7 +28,7 @@ internal static class DashboardBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         
-        var influxBuilder = builder.WithInfluxDatabase(options);
+        builder.WithInfluxDatabase(options);
         
         var grafana = new GrafanaResource(options.DashboardContainerName, builder.Resource.Parent);
         
@@ -45,6 +45,7 @@ internal static class DashboardBuilderExtensions
             .WithBindMount($"{builder.Resource.ScriptDirectory}/grafana","/var/lib/grafana/dashboards")
             .WithBindMount($"{builder.Resource.ScriptDirectory}/grafana/dashboard.yaml","/etc/grafana/provisioning/dashboards/dashboard.yaml")
             .WithBindMount($"{builder.Resource.ScriptDirectory}/grafana/datasource.yaml","/etc/grafana/provisioning/datasources/datasource.yaml")
+            .WithUrl("/d/k6/k6-load-testing-results", "🎯 Load Test Results")
             .WithHttpHealthCheck()
             .ExcludeFromManifest();
         

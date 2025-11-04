@@ -1,8 +1,9 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Eventing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Scribbly.Aspire.Grafana;
+using Scribbly.Aspire.Dashboard;
 
 namespace Scribbly.Aspire.K6;
 
@@ -32,6 +33,7 @@ public static class K6BuilderExtensions
             await configManager.CopyConfigurationFile(
                 new GrafanaConfigurationManager.ConfigContext("execute-script.ps1", "execute-script.ps1"), 
                 cancellation: ct);
+            
         });
 
         builder.ApplicationBuilder.Eventing.Subscribe<BeforeResourceStartedEvent>(k6Server, async (@event, token) =>
@@ -49,6 +51,7 @@ public static class K6BuilderExtensions
             {
                 return;
             }
+            
 #pragma warning disable ASPIREINTERACTION001
             var interaction = @event.Services.GetRequiredService<IInteractionService>();
             if (interaction.IsAvailable)
@@ -122,7 +125,7 @@ public static class K6BuilderExtensions
         
         if (options.UseGrafanaDashboard)
         {
-            var grafana = resourceBuilder.WithGrafanaDashboard(options);
+            resourceBuilder.WithGrafanaDashboard(options);
 
             resourceBuilder.WithEnvironment(context =>
             {
@@ -136,8 +139,6 @@ public static class K6BuilderExtensions
                     context.EnvironmentVariables.Add("K6_OUT", $"influxdb=http://{influxDbResource.Name}:{httpEndpoint.TargetPort}/k6");
                 }
             });
-
-            // resourceBuilder.WaitFor(grafana);
         }
 
         return resourceBuilder;
