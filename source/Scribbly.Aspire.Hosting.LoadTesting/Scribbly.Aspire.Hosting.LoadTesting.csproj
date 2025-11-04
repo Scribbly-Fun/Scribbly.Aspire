@@ -24,6 +24,8 @@
       <EmbeddedResource Include="cfg\grafana-dashboard.json" />
       <EmbeddedResource Include="cfg\grafana-dashboard.yaml" />
       <EmbeddedResource Include="cfg\grafana-datasource.yaml" />
+      <EmbeddedResource Include="cfg\example-test.js" />
+      <EmbeddedResource Include="cfg\execute-script.ps1" />
     </ItemGroup>
 
 </Project>

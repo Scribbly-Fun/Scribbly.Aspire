@@ -1,6 +1,6 @@
 
-using Scribbly.Aspire.Extensions;
 using Scribbly.Aspire;
+using Scribbly.Aspire.K6;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -14,7 +14,7 @@ builder.AddProject<Projects.Scribbly_Aspire_Web>("webfrontend")
 if (!builder.ExecutionContext.IsPublishMode)
 {
     builder
-        .AddLoadTesting("k6server", "./scripts")
+        .AddLoadTesting("load-tester", "./scripts")
         .WithApiResourceForScript("weather-test", apiService)
         .WithApiResourceForScript("loadtest", apiService);
 }

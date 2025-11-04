@@ -1,11 +1,10 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Linq.Expressions;
 using Aspire.Hosting.ApplicationModel;
 using Scribbly.Aspire.Grafana;
 
 namespace Scribbly.Aspire.K6;
 
-public class K6ServerResource : ContainerResource
+public class K6ServerResource : ContainerResource, IResourceWithParent<LoadTesterResource>
 {
     internal const string DefaultScriptDirectory = "./k6_scripts";
     
@@ -16,12 +15,27 @@ public class K6ServerResource : ContainerResource
 
     public string ScriptDirectory { get; set; }
 
-    public bool Initialized { get; set; }
+    private bool _initialized;
+
+    internal bool HasResourceBeenInitialized()
+    {
+        if (!_initialized)
+        {
+            _initialized = true;
+            return false;
+        }
+
+        return _initialized;
+    }
     
     /// <inheritdoc />
-    public K6ServerResource(string name, string scriptDirectory) : base(name)
+    public LoadTesterResource Parent { get; }
+    
+    /// <inheritdoc />
+    public K6ServerResource(string name, string scriptDirectory, LoadTesterResource parent) : base(name)
     {
         ScriptDirectory = scriptDirectory;
+        Parent = parent;
     }
     
     public K6ScriptResource? SelectedScript { get; private set; }

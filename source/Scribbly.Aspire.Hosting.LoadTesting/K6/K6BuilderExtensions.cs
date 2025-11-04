@@ -1,42 +1,25 @@
-using System.Security.Cryptography;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Scribbly.Aspire.Grafana;
-using Scribbly.Aspire.K6;
 
-namespace Scribbly.Aspire;
-
-public sealed class K6ResourceOptions
-{
-    public bool UseGrafanaDashboard { get; set; } = true;
-
-    public string DashboardContainerName { get; set; } = "grafana";
-    public string DatabaseContainerName { get; set; } = "influx";
-    
-    internal static string? ScriptToRun { get; set; }
-}
+namespace Scribbly.Aspire.K6;
 
 public static class K6BuilderExtensions
 {
-    public static IResourceBuilder<K6ServerResource> AddLoadTesting(
-        this IDistributedApplicationBuilder builder,
+    internal static IResourceBuilder<K6ServerResource> AddK6ContainerResource(
+        this IResourceBuilder<LoadTesterResource> builder,
         [ResourceName] string name,
-        string? scriptDirectory = null,
-        Action<K6ResourceOptions>? optionsCallback = null)
+        string path,
+        K6ResourceOptions options)
     {
-        ArgumentNullException.ThrowIfNull(builder);
-        ArgumentException.ThrowIfNullOrEmpty(name);
-
-        var options = new K6ResourceOptions();
-        optionsCallback?.Invoke(options);
+        var k6Server = new K6ServerResource(name,path, builder.Resource);
+        builder.Resource.AddK6Server(k6Server);
         
-        var path = scriptDirectory ?? K6ServerResource.DefaultScriptDirectory;
-        
-        var k6Server = new K6ServerResource(name, path);
+        builder.ApplicationBuilder.Services.AddSingleton(new GrafanaConfigurationManager(path));
 
-        builder.Eventing.Subscribe<InitializeResourceEvent>(k6Server, (@event, ct) =>
+        builder.ApplicationBuilder.Eventing.Subscribe<InitializeResourceEvent>(k6Server, async (@event, ct) =>
         {
             var serverResource = (K6ServerResource)@event.Resource;
             var directory = serverResource.ScriptDirectory;
@@ -44,11 +27,14 @@ public static class K6BuilderExtensions
             {
                 Directory.CreateDirectory(directory);
             }
-            
-            return Task.CompletedTask;
+
+            var configManager = @event.Services.GetRequiredService<GrafanaConfigurationManager>();
+            await configManager.CopyConfigurationFile(
+                new GrafanaConfigurationManager.ConfigContext("execute-script.ps1", "execute-script.ps1"), 
+                cancellation: ct);
         });
 
-        builder.Eventing.Subscribe<BeforeResourceStartedEvent>(k6Server, async (@event, token) =>
+        builder.ApplicationBuilder.Eventing.Subscribe<BeforeResourceStartedEvent>(k6Server, async (@event, token) =>
         {
             if (@event.Resource is not K6ServerResource server)
             {
@@ -59,9 +45,8 @@ public static class K6BuilderExtensions
                 return;
             }
 
-            if (server.Initialized == false)
+            if (!server.HasResourceBeenInitialized())
             {
-                server.Initialized = true;
                 return;
             }
 #pragma warning disable ASPIREINTERACTION001
@@ -79,9 +64,9 @@ public static class K6BuilderExtensions
         
         var healthCheckKey = $"{name}_check";
         
-        builder.Services.AddHealthChecks().AddCheck(healthCheckKey, token => HealthCheckResult.Healthy());
+        builder.ApplicationBuilder.Services.AddHealthChecks().AddCheck(healthCheckKey, token => HealthCheckResult.Healthy());
         
-        var resourceBuilder = builder
+        var resourceBuilder = builder.ApplicationBuilder
             .AddResource(k6Server)
             .WithIconName("TopSpeed")
             .WithImage(K6ContainerImageTags.Image, K6ContainerImageTags.Tag)
@@ -152,7 +137,7 @@ public static class K6BuilderExtensions
                 }
             });
 
-            resourceBuilder.WaitFor(grafana);
+            // resourceBuilder.WaitFor(grafana);
         }
 
         return resourceBuilder;
@@ -172,13 +157,22 @@ public static class K6BuilderExtensions
     private static IResourceBuilder<K6ScriptResource> WithScriptResource(
         this IResourceBuilder<K6ServerResource> builder, FileInfo scriptFile)
     {
-        var scriptResource = K6ScriptResource.CreateScriptResource(scriptFile, builder.Resource);
+        var scriptResource = K6ScriptResource.CreateScriptResource(scriptFile, builder.Resource.Parent);
         
         builder.Resource.AddScript(scriptResource);
 
         var scriptResourceBuilder = builder.ApplicationBuilder
             .AddResource(scriptResource)
-            .WithArgs(scriptResource.ScriptArg);
+            .WithIconName("DocumentJavascript")
+            .WithArgs(ct =>
+            {
+                ct.Args.Add("-ExecutionPolicy");
+                ct.Args.Add("Bypass");
+                ct.Args.Add("-File");
+                ct.Args.Add("./execute-script.ps1");
+                ct.Args.Add("-RelativePath");
+                ct.Args.Add("..\\" + scriptResource.ScriptArg);
+            });
 
         scriptResourceBuilder.WithCommand(
             scriptResource.Name, 
@@ -233,23 +227,19 @@ public static class K6BuilderExtensions
         
         builder.ApplicationBuilder.Eventing.Subscribe<BeforeResourceStartedEvent>(scriptResource, async (@event, ct) =>
         {
-            if (@event.Resource is not K6ScriptResource script)
+            if (@event.Resource is not K6ScriptResource script || script.Parent.Server is null)
             {
                 throw new DistributedApplicationException("Script resource started on non-script resource");
             }
 
-            if (script.Initialized)
+            if (!script.HasResourceBeenInitialized())
             {
-                script.Parent.SelectScript(script.Name);
-                
-                var commandService = @event.Services.GetRequiredService<ResourceCommandService>();
-
-                await commandService.ExecuteCommandAsync(script.Parent.Name, "resource-start", ct);
-                
                 return;
             }
-
-            script.Initialized = true;
+            
+            script.Server.SelectScript(script.Name);
+            var commandService = @event.Services.GetRequiredService<ResourceCommandService>();
+            await commandService.ExecuteCommandAsync(script.Parent.Server.Name, "resource-start", ct);
         });
         
         return scriptResourceBuilder;
@@ -263,5 +253,4 @@ public static class K6BuilderExtensions
 
         return builder.WithBindMount(source, "/scripts", isReadOnly);
     }
-    
 }

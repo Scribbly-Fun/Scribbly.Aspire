@@ -3,14 +3,13 @@ using Scribbly.Aspire.K6;
 
 namespace Scribbly.Aspire.Grafana;
 
-public sealed class GrafanaResource(string name, InfluxResource database, K6ServerResource server) : ContainerResource(name)
+public sealed class GrafanaResource(string name, LoadTesterResource parent) : ContainerResource(name), IResourceWithParent<LoadTesterResource>
 {
-    internal InfluxResource Database { get; } = database;
-    
-    public K6ServerResource Parent { get; } = server;
-
     internal const string PrimaryEndpointName = "http";
 
     private EndpointReference? _primaryEndpoint;
     public EndpointReference PrimaryEndpoint => _primaryEndpoint ??= new(this, PrimaryEndpointName);
+
+    /// <inheritdoc />
+    public LoadTesterResource Parent { get; } = parent;
 }

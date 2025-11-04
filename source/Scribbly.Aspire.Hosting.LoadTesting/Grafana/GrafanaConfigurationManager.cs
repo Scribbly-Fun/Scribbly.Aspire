@@ -4,17 +4,19 @@ namespace Scribbly.Aspire.Grafana;
 
 internal sealed class GrafanaConfigurationManager
 {
-    internal record ConfigContext(string Resource, string Target);
+    internal record ConfigContext(string Resource, string TargetFile, string? TargetDirectory = null);
     
     private const string Namespace = "Scribbly.Aspire.cfg";
     
     private readonly string _scriptsDirectory;
     
+    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1);
+    
     private readonly IReadOnlyCollection<ConfigContext> _files =
     [
-        new ("grafana-dashboard.json", "dashboard.json"),
-        new ("grafana-dashboard.yaml", "dashboard.yaml"),
-        new ("grafana-datasource.yaml", "datasource.yaml")
+        new ("grafana-dashboard.json", "dashboard.json", "grafana"),
+        new ("grafana-dashboard.yaml", "dashboard.yaml", "grafana"),
+        new ("grafana-datasource.yaml", "datasource.yaml", "grafana"),
     ];
     
     internal GrafanaConfigurationManager(string scriptsDirectory)
@@ -24,23 +26,41 @@ internal sealed class GrafanaConfigurationManager
 
     internal async ValueTask CopyConfigurationFiles(Func<ConfigContext, string, string> mutation, CancellationToken cancellation)
     {
-        foreach (var file in _files)
+        await _lock.WaitAsync(cancellation);
+
+        try
         {
-            await CopyConfigurationFile(file, mutation, cancellation);
+            foreach (var file in _files)
+            {
+                await CopyConfigurationFile(file, mutation, cancellation);
+            }
         }
+        finally
+        {
+            _lock.Release();
+        } 
     }
     
-    private async ValueTask CopyConfigurationFile(ConfigContext context, Func<ConfigContext, string, string> mutation, CancellationToken cancellation)
+    internal async ValueTask CopyConfigurationFile(ConfigContext context, Func<ConfigContext, string, string>? mutation = null, CancellationToken cancellation = default)
     {
-        var (resourceName, target) = context;
+        var (resourceName, target, targetDirectory) = context;
+
+        var directory = string.IsNullOrEmpty(targetDirectory)
+            ? _scriptsDirectory
+            : Path.Combine(_scriptsDirectory, targetDirectory);
+
+        if (!Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
         
-        var path = Path.Combine(_scriptsDirectory, "grafana", target);
+        var path = Path.Combine(directory, target);
 
         if (File.Exists(path))
         {
             return;
         }
-        
+    
         var assembly = typeof(GrafanaResource).Assembly;
         await using var stream = assembly.GetManifestResourceStream($"{Namespace}.{resourceName}");
 
@@ -48,12 +68,18 @@ internal sealed class GrafanaConfigurationManager
         {
             throw new FileLoadException(resourceName);
         }
-        
+    
         using var reader = new StreamReader(stream);
         var fileData = await reader.ReadToEndAsync(cancellation);
-        var updatedFile = mutation.Invoke(context, fileData);
 
-        await File.WriteAllTextAsync(path, updatedFile, cancellation);
+        if (mutation is not null)
+        {
+            var updatedFile = mutation.Invoke(context, fileData);
+            await File.WriteAllTextAsync(path, updatedFile, cancellation);
+            return;
+        }
+        
+        await File.WriteAllTextAsync(path, fileData, cancellation);
     }
     
     internal static string MutateDataSourceFile(string datasourceFile, InfluxResource influxResource)
