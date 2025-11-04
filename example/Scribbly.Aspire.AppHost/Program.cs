@@ -14,7 +14,10 @@ builder.AddProject<Projects.Scribbly_Aspire_Web>("webfrontend")
 if (!builder.ExecutionContext.IsPublishMode)
 {
     builder
-        .AddLoadTesting("load-tester", "./scripts")
+        .AddLoadTesting("load-tester", "./scripts", ops =>
+        {
+            ops.ExplicateStartDashboard = true;
+        })
         .WithApiResourceForScript("weather-test", apiService)
         .WithApiResourceForScript("loadtest", apiService);
 }
