@@ -10,7 +10,6 @@
      <PackageProjectUrl>https://github.com/Scribbly-Fun/Scribbly.Aspire</PackageProjectUrl>
      <RepositoryUrl>https://github.com/Scribbly-Fun/Scribbly.Aspire</RepositoryUrl>
      <PackageIcon>scribbly_logo.png</PackageIcon>
-     <PackageReadmeFile>README.md</PackageReadmeFile>
      <PackageTags>Dotnet;Aspire;</PackageTags>
      <Company>Scribble LLC</Company>
 
@@ -33,10 +32,6 @@
   
   <ItemGroup>
     <None Include="..\..\docs\scribbly_logo.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-    <None Include="..\..\README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>

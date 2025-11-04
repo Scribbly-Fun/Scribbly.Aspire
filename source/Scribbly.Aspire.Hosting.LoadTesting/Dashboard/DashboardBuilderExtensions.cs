@@ -51,7 +51,7 @@ internal static class DashboardBuilderExtensions
         
         builder.ApplicationBuilder.Eventing.Subscribe<InitializeResourceEvent>(builder.Resource, async (@event, ct) =>
         {
-            var manager = @event.Services.GetRequiredService<GrafanaConfigurationManager>();
+            var manager = @event.Services.GetRequiredService<ConfigurationFileManager>();
             await manager.CopyGrafanaConfigurationFiles((context, data) =>
             {
                 if (!context.Resource.Contains("datasource", StringComparison.InvariantCultureIgnoreCase))
@@ -60,7 +60,7 @@ internal static class DashboardBuilderExtensions
                 }
                 if (@event.Resource is K6ServerResource { OutputDatabase: not null } server)
                 {
-                    return GrafanaConfigurationManager.MutateDataSourceFile(data, server.OutputDatabase);
+                    return ConfigurationFileManager.MutateDataSourceFile(data, server.OutputDatabase);
                 }
                 return data;
             }, ct);

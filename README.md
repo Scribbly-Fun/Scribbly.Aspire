@@ -1,5 +1,5 @@
 # Scribbly.Aspire
-Usefull dotnet Aspire extensions and Resources.
+Useful dotnet Aspire extensions and Resources.
 
 # Extensions
 
@@ -9,14 +9,14 @@ this may include everything from styling extensions, custom dialogs, and shared 
 # Resources
 
 The Scribbly.Aspire repo has several packages intended to be used as Aspire resources. 
-All resouce libraries are prefixed with the Scribbly.Aspire.Hosting name. 
+All resource libraries are prefixed with the Scribbly.Aspire.Hosting name. 
 
 ## Load Tester
 
-The Scribbly.Aspire.Hosting.LoadTest resouce can be used to run K6 load tests and output the data to a realtime grafana dashboard. 
-This resouce can be configured at runtime, used to generate load test scripts from C# and discovery scripts from a provided directory. 
+The Scribbly.Aspire.Hosting.LoadTest resource can be used to run K6 load tests and output the data to a realtime grafana dashboard. 
+This resource can be configured at runtime, used to generate load test scripts from C# and discovery scripts from a provided directory. 
 
-![Scribbly.Aspire.Hosting.LoadTest](./source/Scribbly.Aspire.Hosting.LoadTest/README.md)
+![Scribbly.Aspire.Hosting.LoadTest](./source/Scribbly.Aspire.Hosting.LoadTesting/README.md)
 
 # Aspire Links
 

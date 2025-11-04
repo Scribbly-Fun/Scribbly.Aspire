@@ -35,9 +35,7 @@ public class K6ScriptResource : ExecutableResource, IResourceWithParent<LoadTest
         Parent = parent;
         Server = parent.Server;
         
-        ScriptArg = new StringBuilder(Server.ScriptDirectory.StartsWith('.')
-                ? Server.ScriptDirectory.Remove(0, 1)
-                : Server.ScriptDirectory)
+        ScriptArg = new StringBuilder("/scripts")
             .Append('/')
             .Append(file)
             .ToString();

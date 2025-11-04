@@ -4,28 +4,28 @@
         <NoWarn>CS1591</NoWarn>
         <PackageTags>aspire integration hosting grafana k6</PackageTags>
         <Description>Grafana/K6® support for .NET Aspire.</Description>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
-
         <PackageReference Include="Aspire.Hosting"/>
     </ItemGroup>
-
-    <ItemGroup>
-      <None Remove="k6-load-testing-results.json" />
-    </ItemGroup>
-
+    
     <ItemGroup>
       <ProjectReference Include="..\Scribbly.Aspire.Extensions\Scribbly.Aspire.Extensions.csproj" />
     </ItemGroup>
     
     <ItemGroup>
-      <EmbeddedResource Include="cfg\grafana-dashboard.json" />
-      <EmbeddedResource Include="cfg\grafana-dashboard.yaml" />
-      <EmbeddedResource Include="cfg\grafana-datasource.yaml" />
-      <EmbeddedResource Include="cfg\example-test.js" />
-      <EmbeddedResource Include="cfg\execute-script.ps1" />
+        <None Include=".\README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <EmbeddedResource Include="cfg\grafana-dashboard.json" />
+        <EmbeddedResource Include="cfg\grafana-dashboard.yaml" />
+        <EmbeddedResource Include="cfg\grafana-datasource.yaml" />
+        <EmbeddedResource Include="cfg\example-test.js" />
+        <EmbeddedResource Include="cfg\execute-script.ps1" />
     </ItemGroup>
 
 </Project>
