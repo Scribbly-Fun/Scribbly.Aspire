@@ -14,7 +14,7 @@ internal static class DashboardBuilderExtensions
         var influx = new InfluxResource(resourceName, builder.Resource);
         builder.Resource.AddInfluxDatabase(influx);
         
-        return builder.ApplicationBuilder
+        var influxBuilder = builder.ApplicationBuilder
             .AddResource(influx)
             .WithIconName("MapDrive")
             .WithImage(K6ContainerImageTags.InfluxImage, K6ContainerImageTags.InfluxTag)
@@ -22,6 +22,12 @@ internal static class DashboardBuilderExtensions
             .WithHttpEndpoint(targetPort: 8086, name: "http")
             .WithEnvironment("INFLUXDB_DB", "k6")
             .ExcludeFromManifest();
+        if (options.ExplicateStartDashboard)
+        {
+            influxBuilder.WithExplicitStart();
+        }
+        
+        return influxBuilder;
     }
     
     internal static IResourceBuilder<GrafanaResource> UseGrafanaDashboard(this IResourceBuilder<K6ServerResource> builder, [ResourceName] string resourceName)
@@ -48,6 +54,11 @@ internal static class DashboardBuilderExtensions
             .WithUrl("/d/k6/k6-load-testing-results", "🎯 Load Test Results")
             .WithHttpHealthCheck()
             .ExcludeFromManifest();
+
+        if (options.ExplicateStartDashboard)
+        {
+            grafanaContainerBuilder.WithExplicitStart();
+        }
         
         builder.ApplicationBuilder.Eventing.Subscribe<InitializeResourceEvent>(builder.Resource, async (@event, ct) =>
         {
