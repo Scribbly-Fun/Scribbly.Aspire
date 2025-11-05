@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Aspire.Hosting;
+﻿using Aspire.Hosting;
 
 namespace Scribbly.Aspire.Resources.LoadTesting;
 
@@ -9,8 +8,6 @@ public sealed class LoadTestingResourceFactory : IAsyncLifetime
     internal IServiceProvider? Services;
     
     /// <inheritdoc />
-    [MemberNotNull(nameof(App))]
-    [MemberNotNull(nameof(Services))]
     public async Task InitializeAsync()
     {
         var appHost = await DistributedApplicationTestingBuilder.CreateAsync<Projects.Scribbly_Aspire_AppHost>();

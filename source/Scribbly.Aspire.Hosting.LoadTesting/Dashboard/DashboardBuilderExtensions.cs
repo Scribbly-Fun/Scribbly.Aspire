@@ -22,10 +22,6 @@ internal static class DashboardBuilderExtensions
             .WithHttpEndpoint(targetPort: 8086, name: "http")
             .WithEnvironment("INFLUXDB_DB", "k6")
             .ExcludeFromManifest();
-        if (options.ExplicateStartDashboard)
-        {
-            influxBuilder.WithExplicitStart();
-        }
         
         return influxBuilder;
     }
@@ -54,11 +50,6 @@ internal static class DashboardBuilderExtensions
             .WithUrl("/d/k6/k6-load-testing-results", "🎯 Load Test Results")
             .WithHttpHealthCheck()
             .ExcludeFromManifest();
-
-        if (options.ExplicateStartDashboard)
-        {
-            grafanaContainerBuilder.WithExplicitStart();
-        }
         
         builder.ApplicationBuilder.Eventing.Subscribe<InitializeResourceEvent>(builder.Resource, async (@event, ct) =>
         {
