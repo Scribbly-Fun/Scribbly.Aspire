@@ -9,6 +9,9 @@ export let options = {
 };
 
 export default function () {
-  http.get(`${ASPIRE_RESOURCE}/weatherforecast`);
+  const res = http.get(`${ASPIRE_RESOURCE}/cookbooks`);
+  check(res, {
+    'response code was 200': (res) => res.status == 200,
+  });
   sleep(1);
 }

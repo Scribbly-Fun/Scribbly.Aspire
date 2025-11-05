@@ -4,6 +4,7 @@ using Aspire.Hosting.Eventing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Scribbly.Aspire.Dashboard;
+using Scribbly.Aspire.K6.Annotations;
 
 namespace Scribbly.Aspire.K6;
 
@@ -13,7 +14,7 @@ public static class K6BuilderExtensions
         this IResourceBuilder<LoadTesterResource> builder,
         [ResourceName] string name,
         string path,
-        K6ResourceOptions options)
+        Action<LoadTesterResourceOptions>? optionsCallback = null)
     {
         var k6Server = new K6ServerResource(name,path, builder.Resource);
         builder.Resource.AddK6Server(k6Server);
@@ -69,7 +70,7 @@ public static class K6BuilderExtensions
         
         builder.ApplicationBuilder.Services.AddHealthChecks().AddCheck(healthCheckKey, token => HealthCheckResult.Healthy());
         
-        var resourceBuilder = builder.ApplicationBuilder
+        var k6ContainerResource = builder.ApplicationBuilder
             .AddResource(k6Server)
             .WithIconName("TopSpeed")
             .WithImage(K6ContainerImageTags.Image, K6ContainerImageTags.Tag)
@@ -98,62 +99,116 @@ public static class K6BuilderExtensions
                     return;
                 }
                 
-                var annotation = server.Annotations
+                var scriptBindingAnnotation = server.Annotations
                     .OfType<K6LoadTestScriptAnnotation>()
                     .FirstOrDefault(a => a.Script == server.SelectedScript.Name);
                 
-                if (annotation is null)
+                if (scriptBindingAnnotation is null)
                 {
-                    // When there is no annotation we assume you want to use the value from the script
+                    var fallbackAnnotation = server.Parent.Annotations
+                        .OfType<K6DefaultEndpointScriptAnnotation>()
+                        .FirstOrDefault();
+
+                    if (fallbackAnnotation is null)
+                    {
+                        // We assume you have hard coded URLs in the script.
+                        return;
+                    }
+                    
+                    var defaultUrl = $"{fallbackAnnotation.Endpoint.Scheme}://host.docker.internal:{fallbackAnnotation.Endpoint.Port}";
+                    ct.EnvironmentVariables.Add("ASPIRE_RESOURCE", defaultUrl);
+                    
                     return;
                 }
                 
-                var url = $"{annotation.Endpoint.Scheme}://host.docker.internal:{annotation.Endpoint.Port}";
-                
+                var url = $"{scriptBindingAnnotation.Endpoint.Scheme}://host.docker.internal:{scriptBindingAnnotation.Endpoint.Port}";
                 ct.EnvironmentVariables.Add("ASPIRE_RESOURCE", url);
             })
             .WithHealthCheck(healthCheckKey)
             .ExcludeFromManifest()
             .WithExplicitStart();
+        
+        var options = new LoadTesterResourceOptions(k6ContainerResource);
+        optionsCallback?.Invoke(options);
 
         var scripts = new DirectoryInfo(path).InitializeScriptDirectory();
         foreach (var fileInfo in scripts)
         {
-            resourceBuilder.WithScriptResource(fileInfo);
+            k6ContainerResource.WithScriptResource(fileInfo);
         }
-        
-        if (options.UseGrafanaDashboard)
-        {
-            resourceBuilder.WithGrafanaDashboard(options);
 
-            resourceBuilder.WithEnvironment(context =>
+        return k6ContainerResource;
+    }
+
+    /// <summary>
+    /// Adds a grafana dashboard to the K6 resource used to display live data and results.
+    /// </summary>
+    /// <param name="options">The K6 container builder.</param>
+    /// <param name="grafanaResourceName">The name to use for the dashboard resource</param>
+    /// <returns>The container linked to a grafana dashboard resource.</returns>
+    public static LoadTesterResourceOptions WithGrafanaDashboard(
+        this LoadTesterResourceOptions options,
+        [ResourceName] string grafanaResourceName = "dashboard")
+    {
+        options.K6ResourceBuilder
+            .UseGrafanaDashboard(grafanaResourceName)
+            .WithEnvironment(context =>
             {
-                var applicationModel = context.ExecutionContext.ServiceProvider.GetRequiredService<DistributedApplicationModel>();
-                var influxDbResource = applicationModel.Resources.FirstOrDefault(r =>
-                    r.Name.Contains(options.DatabaseContainerName, StringComparison.OrdinalIgnoreCase));
-                
-                if (influxDbResource is IResourceWithEndpoints influxDatabase)
+                if (context.Resource is not GrafanaResource { Parent.Server.OutputDatabase: not null } dashboard)
                 {
-                    var httpEndpoint = influxDatabase.GetEndpoint("http");
-                    context.EnvironmentVariables.Add("K6_OUT", $"influxdb=http://{influxDbResource.Name}:{httpEndpoint.TargetPort}/k6");
+                    return;
                 }
-            });
-        }
 
-        return resourceBuilder;
+                var database = dashboard.Parent.Server.OutputDatabase;
+                
+                var httpEndpoint = database.GetEndpoint("http");
+                context.EnvironmentVariables.Add("K6_OUT", $"influxdb=http://{database.Name}:{httpEndpoint.TargetPort}/k6");
+            });
+
+        return options;
     }
     
-    public static IResourceBuilder<K6ServerResource> WithApiResourceForScript(
-        this IResourceBuilder<K6ServerResource> builder, 
-        string script, 
-        IResourceBuilder<IResourceWithServiceDiscovery> source, 
-        string endpointName = "http")
+    /// <summary>
+    /// Adds the k6 default dashboard to the K6 docker container.
+    /// </summary>
+    /// <param name="options">The load test resource options.</param>
+    /// <returns>The k6 builder with a built-in dashboard</returns>
+    public static LoadTesterResourceOptions WithBuiltInDashboard(
+        this LoadTesterResourceOptions options)
     {
-        builder.WithAnnotation(new K6LoadTestScriptAnnotation(script, source, endpointName));
-        builder.WithReference(source);
-        return builder;
+        options.K6ResourceBuilder
+            .WithEnvironment("K6_WEB_DASHBOARD", "true")
+            .WithEnvironment("K6_WEB_DASHBOARD_EXPORT", "loadtest.html")
+            .WithEnvironment("K6_WEB_DASHBOARD_PERIOD", "3s")
+            .WithHttpEndpoint(targetPort: 5665, name: "k6-dashboard")
+            .WithUrl("/ui/?endpoint=/", "🎯 Load Test Results");
+
+        return options;
     }
 
+    /// <summary>
+    /// Adds Open Telemetry to the K6 container and allows exported traces to be displayed on the Aspire dashboard.
+    /// </summary>
+    /// <param name="options">The k6 Container resource Builder</param>
+    /// <returns>The k6 container resource with OTEL added.</returns>
+    public static LoadTesterResourceOptions WithOtlpEnvironment(
+        this LoadTesterResourceOptions options)
+    {
+        options.K6ResourceBuilder
+            .WithOtlpExporter()
+            .WithEnvironment(context =>
+        {
+            foreach (var (key, value) in context.EnvironmentVariables.ToList())
+            {
+                if (key.StartsWith("OTEL_"))
+                {
+                    context.EnvironmentVariables.TryAdd($"K6_{key}", value);
+                }
+            }
+        });
+        return options;
+    }
+    
     private static IResourceBuilder<K6ScriptResource> WithScriptResource(
         this IResourceBuilder<K6ServerResource> builder, FileInfo scriptFile)
     {
@@ -247,12 +302,64 @@ public static class K6BuilderExtensions
         return scriptResourceBuilder;
     }
     
-    
     private static IResourceBuilder<K6ServerResource> WithDataBindMount(this IResourceBuilder<K6ServerResource> builder, string source, bool isReadOnly = false)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrEmpty(source);
 
         return builder.WithBindMount(source, "/scripts", isReadOnly);
+    }
+    
+    /// <summary>
+    /// Provides a default API resource to use for all scripts.
+    /// Scribbly will determine the endpoint URL and inject it into your script using the ASPIRE_RESOURCE variable.
+    /// To use an Aspire endpoint in you script you must access the ASPIRE_RESOURCE env variable.  See the example-test.js file.
+    /// </summary>
+    /// <param name="builder">The load test builder containing scripts.</param>
+    /// <param name="source">The source API resource or resource with endpoints.</param>
+    /// <param name="endpointName">
+    /// The name of the endpoint
+    /// <remarks>We default to HTTP assuming your request will use the docker network.</remarks>
+    /// </param>
+    /// <returns>The load tester with endpoint bindings.</returns>
+    /// <remarks>
+    ///     When no default API resource is provided Scribbly assumes you plan to use a hardcoded URL inside the script.
+    ///     Scribbly will not inject the ASPIRE_RESOURCE url into your script.
+    ///
+    ///     Any script bound to an endpoint with the <see cref="WithApiResourceForScript"/> method will override this api resource.
+    /// </remarks>
+    public static IResourceBuilder<LoadTesterResource> WithDefaultApiResourceForScripts(
+        this IResourceBuilder<LoadTesterResource> builder, 
+        IResourceBuilder<IResourceWithEndpoints> source, 
+        [EndpointName] string endpointName = "http")
+    {
+        builder.WithAnnotation(new K6DefaultEndpointScriptAnnotation(source, endpointName));
+        return builder;
+    }
+    
+    /// <summary>
+    /// The with api resource for script binds the ASPIRE_RESOURCE environment variable to the API resources http endpoint.
+    /// This enables to the script to target a specific API resource.
+    /// </summary>
+    /// <param name="builder"></param>
+    /// <param name="script"></param>
+    /// <param name="source"></param>
+    /// <param name="endpointName"></param>
+    /// <returns></returns>
+    /// <remarks>
+    ///     As of 11.5.2025 this is a 1:1 relationship but will be updated to support any combination of script to endpoint
+    ///     Scripts that are discovered but not bound to a resource will use the default API resource.
+    /// </remarks>
+    public static IResourceBuilder<LoadTesterResource> WithApiResourceForScript(
+        this IResourceBuilder<LoadTesterResource> builder, 
+        string script, 
+        IResourceBuilder<IResourceWithEndpoints> source, 
+        string endpointName = "http")
+    {
+        builder.ApplicationBuilder
+            .CreateResourceBuilder(builder.Resource.Server!)
+            .WithAnnotation(new K6LoadTestScriptAnnotation(script, source, endpointName));
+        
+        return builder;
     }
 }

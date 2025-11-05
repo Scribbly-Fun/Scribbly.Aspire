@@ -50,7 +50,7 @@ public class ResourceTests(LoadTestingResourceFactory app)
         var resourceNotificationService = app.Services!.GetRequiredService<ResourceNotificationService>();
 
         // Act
-        await resourceNotificationService.WaitForResourceAsync("influx", KnownResourceStates.Running).WaitAsync(TimeSpan.FromSeconds(30));
+        await resourceNotificationService.WaitForResourceAsync("dashboard-influx", KnownResourceStates.Running).WaitAsync(TimeSpan.FromSeconds(30));
 
         // Assert
         Assert.True(true);

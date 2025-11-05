@@ -13,7 +13,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\source\Scribbly.Aspire.Extensions\Scribbly.Aspire.Extensions.csproj" IsAspireProjectResource="false"/>
     <ProjectReference Include="..\..\source\Scribbly.Aspire.Hosting.LoadTesting\Scribbly.Aspire.Hosting.LoadTesting.csproj" IsAspireProjectResource="false" />
-    <ProjectReference Include="..\Scribbly.Aspire.ApiService\Scribbly.Aspire.ApiService.csproj" />
+    <ProjectReference Include="..\Scribbly.Aspire.WeatherApi\Scribbly.Aspire.WeatherApi.csproj" />
+    <ProjectReference Include="..\Scribbly.Aspire.CookbookApi\Scribbly.Aspire.CookbookApi.csproj" />
     <ProjectReference Include="..\Scribbly.Aspire.Web\Scribbly.Aspire.Web.csproj" />
   </ItemGroup>
 

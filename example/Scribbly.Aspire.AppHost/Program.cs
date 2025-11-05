@@ -4,19 +4,27 @@ using Scribbly.Aspire.K6;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var apiService = builder.AddProject<Projects.Scribbly_Aspire_ApiService>("apiservice");
+var weatherApi = builder.AddProject<Projects.Scribbly_Aspire_WeatherApi>("weather-api");
+var cookbookApi = builder.AddProject<Projects.Scribbly_Aspire_CookbookApi>("cookbook-api");
 
 builder.AddProject<Projects.Scribbly_Aspire_Web>("webfrontend")
     .WithExternalHttpEndpoints()
-    .WithReference(apiService)
-    .WaitFor(apiService);
+    .WithReference(weatherApi)
+    .WaitFor(weatherApi);
 
 if (!builder.ExecutionContext.IsPublishMode)
 {
     builder
-        .AddLoadTesting("load-tester", "./scripts")
-        .WithApiResourceForScript("weather-test", apiService)
-        .WithApiResourceForScript("loadtest", apiService);
+        .AddLoadTesting("load-tester", "./scripts", options =>
+        {
+            options
+                .WithBuiltInDashboard()
+                .WithGrafanaDashboard()
+                .WithOtlpEnvironment();
+        })
+        .WithDefaultApiResourceForScripts(cookbookApi)
+        .WithApiResourceForScript("weather-test", weatherApi)
+        .WithApiResourceForScript("rate-limited", weatherApi);
 }
 
 builder.Build().Run();

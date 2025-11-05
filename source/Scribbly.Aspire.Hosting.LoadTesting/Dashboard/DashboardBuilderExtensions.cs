@@ -7,11 +7,11 @@ namespace Scribbly.Aspire.Dashboard;
 
 internal static class DashboardBuilderExtensions
 {
-    private static IResourceBuilder<InfluxResource> WithInfluxDatabase(this IResourceBuilder<K6ServerResource> builder, K6ResourceOptions options)
+    private static IResourceBuilder<InfluxResource> UseInfluxDatabase(this IResourceBuilder<K6ServerResource> builder, [ResourceName] string resourceName)
     {
         ArgumentNullException.ThrowIfNull(builder);
         
-        var influx = new InfluxResource(options.DatabaseContainerName, builder.Resource);
+        var influx = new InfluxResource(resourceName, builder.Resource);
         builder.Resource.AddInfluxDatabase(influx);
         
         return builder.ApplicationBuilder
@@ -24,13 +24,13 @@ internal static class DashboardBuilderExtensions
             .ExcludeFromManifest();
     }
     
-    internal static IResourceBuilder<GrafanaResource> WithGrafanaDashboard(this IResourceBuilder<K6ServerResource> builder, K6ResourceOptions options)
+    internal static IResourceBuilder<GrafanaResource> UseGrafanaDashboard(this IResourceBuilder<K6ServerResource> builder, [ResourceName] string resourceName)
     {
         ArgumentNullException.ThrowIfNull(builder);
         
-        builder.WithInfluxDatabase(options);
+        builder.UseInfluxDatabase($"{resourceName}-influx");
         
-        var grafana = new GrafanaResource(options.DashboardContainerName, builder.Resource.Parent);
+        var grafana = new GrafanaResource(resourceName, builder.Resource.Parent);
         
         var grafanaContainerBuilder = builder.ApplicationBuilder
             .AddResource(grafana)

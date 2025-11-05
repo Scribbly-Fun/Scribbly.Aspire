@@ -8,10 +8,11 @@
     <File Path="Directory.Build.targets" />
   </Folder>
   <Folder Name="/app/">
-    <Project Path="example/Scribbly.Aspire.ApiService/Scribbly.Aspire.ApiService.csproj" />
     <Project Path="example/Scribbly.Aspire.AppHost/Scribbly.Aspire.AppHost.csproj" />
     <Project Path="example/Scribbly.Aspire.ServiceDefaults/Scribbly.Aspire.ServiceDefaults.csproj" />
     <Project Path="example/Scribbly.Aspire.Web/Scribbly.Aspire.Web.csproj" />
+    <Project Path="example\Scribbly.Aspire.CookbookApi\Scribbly.Aspire.CookbookApi.csproj" Type="Classic C#" />
+    <Project Path="example\Scribbly.Aspire.WeatherApi\Scribbly.Aspire.WeatherApi.csproj" />
     <File Path="example/Directory.Build.props" />
   </Folder>
   <Folder Name="/source/">

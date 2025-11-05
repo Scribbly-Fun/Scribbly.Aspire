@@ -14,7 +14,7 @@ internal sealed class K6LoadTestScriptAnnotation : IResourceAnnotation
 
     public EndpointReference Endpoint { get; }
     
-    public K6LoadTestScriptAnnotation(string script, IResourceBuilder<IResourceWithServiceDiscovery> source, string endpointName)
+    public K6LoadTestScriptAnnotation(string script, IResourceBuilder<IResourceWithEndpoints> source, string endpointName)
     {
         ArgumentNullException.ThrowIfNull(script);
         
