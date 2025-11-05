@@ -7,11 +7,11 @@ namespace Scribbly.Aspire.Dashboard;
 
 internal static class DashboardBuilderExtensions
 {
-    private static IResourceBuilder<InfluxResource> WithInfluxDatabase(this IResourceBuilder<K6ServerResource> builder, K6ResourceOptions options)
+    private static IResourceBuilder<InfluxResource> UseInfluxDatabase(this IResourceBuilder<K6ServerResource> builder, [ResourceName] string resourceName)
     {
         ArgumentNullException.ThrowIfNull(builder);
         
-        var influx = new InfluxResource(options.DatabaseContainerName, builder.Resource);
+        var influx = new InfluxResource(resourceName, builder.Resource);
         builder.Resource.AddInfluxDatabase(influx);
         
         var influxBuilder = builder.ApplicationBuilder
@@ -22,21 +22,17 @@ internal static class DashboardBuilderExtensions
             .WithHttpEndpoint(targetPort: 8086, name: "http")
             .WithEnvironment("INFLUXDB_DB", "k6")
             .ExcludeFromManifest();
-        if (options.ExplicateStartDashboard)
-        {
-            influxBuilder.WithExplicitStart();
-        }
         
         return influxBuilder;
     }
     
-    internal static IResourceBuilder<GrafanaResource> WithGrafanaDashboard(this IResourceBuilder<K6ServerResource> builder, K6ResourceOptions options)
+    internal static IResourceBuilder<GrafanaResource> UseGrafanaDashboard(this IResourceBuilder<K6ServerResource> builder, [ResourceName] string resourceName)
     {
         ArgumentNullException.ThrowIfNull(builder);
         
-        builder.WithInfluxDatabase(options);
+        builder.UseInfluxDatabase($"{resourceName}-influx");
         
-        var grafana = new GrafanaResource(options.DashboardContainerName, builder.Resource.Parent);
+        var grafana = new GrafanaResource(resourceName, builder.Resource.Parent);
         
         var grafanaContainerBuilder = builder.ApplicationBuilder
             .AddResource(grafana)
@@ -54,11 +50,6 @@ internal static class DashboardBuilderExtensions
             .WithUrl("/d/k6/k6-load-testing-results", "🎯 Load Test Results")
             .WithHttpHealthCheck()
             .ExcludeFromManifest();
-
-        if (options.ExplicateStartDashboard)
-        {
-            grafanaContainerBuilder.WithExplicitStart();
-        }
         
         builder.ApplicationBuilder.Eventing.Subscribe<InitializeResourceEvent>(builder.Resource, async (@event, ct) =>
         {

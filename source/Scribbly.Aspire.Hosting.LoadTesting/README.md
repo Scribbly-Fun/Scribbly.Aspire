@@ -59,23 +59,39 @@ export default function () {
   sleep(1);
 }
 ```
-The scripts can then be bound to endpoint resources.
+The scripts can then be bound to an endpoint resource.  Use the `WithDefaultApiResourceForScripts` method to provide an API resource used for all scripts.
 
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
-var apiService = builder.AddProject<Projects.Scribbly_Aspire_ApiService>("apiservice");
+var apiService = builder.AddProject<Projects.Scribbly_Aspire_ApiService>("weather-api");
 
 if (!builder.ExecutionContext.IsPublishMode)
 {
     builder
         .AddLoadTesting("load-tester", "./scripts")
-        .WithApiResourceForScript("example-test", apiService);
+        .WithDefaultApiResourceForScripts(cookbookApi);
 }
 
 builder.Build().Run();
 ```
+Individual scripts can override the default binding.
 
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+
+var apiService = builder.AddProject<Projects.Scribbly_Aspire_ApiService>("weather-api");
+
+if (!builder.ExecutionContext.IsPublishMode)
+{
+    builder
+        .AddLoadTesting("load-tester", "./scripts")
+        .WithApiResourceForScript("weather-test", weatherApi)
+        .WithDefaultApiResourceForScripts(cookbookApi);
+}
+
+builder.Build().Run();
+```
 # Script Resource
 
 The `Scribbly.Aspire.Hosting.LoadTest` resource will detect all .js scripts in the scripts directory and create a new Aspire resource for each script.
@@ -90,6 +106,10 @@ The script resources are your entry point for executing load tests.
 
 Pressing play will start the K6 container and begin running the targeted script.
 
+> [!Note]
+> Scribbly will create a resource using the name of the script removing all . and _ and replacing them with -
+> example.test.js would become a resource example-test
+
 ![Resources](../../docs/k6/script_start.png)
 
 A custom user dialog has been created to optionally override the scripts virtual users and runtime.
@@ -98,20 +118,39 @@ A custom user dialog has been created to optionally override the scripts virtual
 
 # Dashboard Resource
 
-The `Scribbly.Aspire.Hosting.LoadTest` resource will stream the results to an influx DB and display them on a grafana dashboard.
+The `Scribbly.Aspire.Hosting.LoadTest` resource will stream the results to an influx DB and display them on a grafana dashboard or use the built-in K6 dashboard.
+Both dashboards can be use simultaneously.
+
+## K6 Dashboard
+
+To use the K6 integrated web dashboard use the options callback
+
+```csharp
+builder
+    .AddLoadTesting("load-tester", "./scripts", options =>
+    {
+        options.WithBuiltInDashboard();
+    })
+    .WithDefaultApiResourceForScripts(cookbookApi);
+```
+This will enable a URL on the Aspire Dashboard that opens the Web based dashboard
+
+![K6 Dashboard](../../docs/k6/k6_dashboard.gif)
+
+## Grafana
+
 The `dashboard` resource is responsible for setting up grafana.  This includes copying configuration files and running the container.
 
 ![Resources](../../docs/k6/dashboard.gif)
 
-The default options assume you want to use the ``Grafana`` dashboard to stream the results and display realtime feedback.  
-This can be disabled and result can be displayed in the k6 resource console.  To disable the dashboard use the options callback.
+The default options disable the ``Grafana`` dashboard.  
+This can be enabled using the options.  To enable the dashboard use the options callback.
 
 ```csharp
 builder
-    .AddLoadTesting("load-tester", "./scripts", ops =>
+    .AddLoadTesting("load-tester", "./scripts", options =>
     {
-        ops.UseGrafanaDashboard = false;
+        options.WithGrafanaDashboard();
     })
-    .WithApiResourceForScript("weather-test", apiService)
-    .WithApiResourceForScript("loadtest", apiService);
+    .WithDefaultApiResourceForScripts(cookbookApi);
 ```

@@ -25,6 +25,7 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.13.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.13.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.13.0" />
+    <PackageVersion Include="Scribbly.Stencil" Version="0.3.5" />
     <!-- APPLICATION TOOLING -->
     <PackageVersion Include="System.Text.Json" Version="9.0.5" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />

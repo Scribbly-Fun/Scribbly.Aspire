@@ -50,7 +50,7 @@ public class ResourceTests(LoadTestingResourceFactory app)
         var resourceNotificationService = app.Services!.GetRequiredService<ResourceNotificationService>();
 
         // Act
-        await resourceNotificationService.WaitForResourceAsync("influx", KnownResourceStates.Running).WaitAsync(TimeSpan.FromSeconds(30));
+        await resourceNotificationService.WaitForResourceAsync("dashboard-influx", KnownResourceStates.Running).WaitAsync(TimeSpan.FromSeconds(30));
 
         // Assert
         Assert.True(true);
@@ -64,6 +64,22 @@ public class ResourceTests(LoadTestingResourceFactory app)
 
         // Act
         await resourceNotificationService.WaitForResourceAsync("dashboard", KnownResourceStates.Running).WaitAsync(TimeSpan.FromSeconds(30));
+
+        // Assert
+        Assert.True(true);
+    }
+    
+    [Fact]
+    public async Task StartingScript_Should_Start_DashboardResource()
+    {
+        // Arrange
+        var commandService = app.Services!.GetRequiredService<ResourceCommandService>();
+        var resourceNotificationService = app.Services!.GetRequiredService<ResourceNotificationService>();
+
+        // Act
+        await commandService.ExecuteCommandAsync("example-test", "resource-start");
+        
+        await resourceNotificationService.WaitForResourceAsync("load-tester-k6", KnownResourceStates.Running).WaitAsync(TimeSpan.FromSeconds(30));
 
         // Assert
         Assert.True(true);
